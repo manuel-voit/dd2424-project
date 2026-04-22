@@ -65,7 +65,7 @@ if __name__ == "__main__":
     
     # Fetch a single batch to verify
     binary_images, binary_labels = next(iter(loaders['binary']['train']))
-    print("\n--- Sanity Check ---")
+    print("\nDATALOADER SANITY CHECK:\n")
     print(f"Binary Batch Image Shape: {binary_images.shape}")
     print(f"Binary Batch Labels Shape: {binary_labels.shape}")
     print(f"Binary Labels Example (0=Cat, 1=Dog): {binary_labels[:5].tolist()}")
