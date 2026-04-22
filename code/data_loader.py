@@ -3,13 +3,7 @@ import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
-# return std transforms for ResNet models, include resizing and ImageNet normalization
-def get_transforms():
-    return transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) # ImageNet mean and standard deviation
-    ])
+from data_augmentation import get_train_transforms, get_test_transforms
 
 # Download dataset (if not available) and return DataLoaders for binary and multi-class classification
 def get_pet_dataloaders(data_dir='./dataset', batch_size=32, num_workers=2):
@@ -26,26 +20,27 @@ def get_pet_dataloaders(data_dir='./dataset', batch_size=32, num_workers=2):
     # ensure target directory exists
     os.makedirs(data_dir, exist_ok=True)
     
-    transform = get_transforms()
+    train_transform = get_train_transforms()
+    test_transform = get_test_transforms()
 
     # Binary dataset (0=Cat, 1=Dog)
     binary_train = datasets.OxfordIIITPet(
         root=data_dir, split='trainval', target_types='binary-category', 
-        transform=transform, download=True
+        transform=train_transform, download=True
     )
     binary_test = datasets.OxfordIIITPet(
         root=data_dir, split='test', target_types='binary-category', 
-        transform=transform, download=True
+        transform=test_transform, download=True
     )
 
     # Multi-class dataset (0-36)
     multi_train = datasets.OxfordIIITPet(
         root=data_dir, split='trainval', target_types='category', 
-        transform=transform, download=True
+        transform=train_transform, download=True
     )
     multi_test = datasets.OxfordIIITPet(
         root=data_dir, split='test', target_types='category', 
-        transform=transform, download=True
+        transform=test_transform, download=True
     )
 
     # Create data loaders for both tasks
