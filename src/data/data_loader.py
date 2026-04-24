@@ -1,9 +1,11 @@
 import os
 from torchvision import datasets
 from torch.utils.data import DataLoader
+from torch.utils.data import Subset
+from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import train_test_split
 
-from transforms import get_trainval_transforms, get_test_transforms
+from src.data.transforms import get_train_transforms, get_test_transforms
 
 # Download dataset (if not available) and return DataLoaders for binary and multi-class classification
 def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
@@ -20,7 +22,7 @@ def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
     # ensure target directory exists
     os.makedirs(data_dir, exist_ok=True)
     
-    train_transform = get_val_transforms()
+    train_transform = get_train_transforms()
     test_transform = get_test_transforms()
 
     # Binary dataset (0=Cat, 1=Dog)
@@ -36,7 +38,7 @@ def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
     # Splitting train and val set from trainval in OxfordIIIT Dataset
     dataset_size = len(binary_train_trans)
     indices = list(range(dataset_size))
-    train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42)
+    train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42, stratify=binary_train_trans._labels)
     binary_train = Subset(binary_train_trans, train_indices)
     binary_val = Subset(binary_val_trans, val_indices)
 
@@ -59,7 +61,7 @@ def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
 
     dataset_size = len(multi_train_trans)
     indices = list(range(dataset_size))
-    train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42)
+    train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42, stratify=binary_train_trans._labels)
     multi_train = Subset(multi_train_trans, train_indices)
     multi_val = Subset(multi_val_trans, val_indices)
 
@@ -77,7 +79,7 @@ def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
             'test': DataLoader(binary_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
         },
         'multi': {
-            'train': DataLoader(multi_trainval, batch_size=batch_size, shuffle=True, num_workers=num_workers),
+            'train': DataLoader(multi_train, batch_size=batch_size, shuffle=True, num_workers=num_workers),
             'val': DataLoader(multi_val, batch_size=batch_size, shuffle=False, num_workers=num_workers),
             'test': DataLoader(multi_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
         }
