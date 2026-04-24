@@ -1,27 +1,22 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.models as models
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
-import random
-import numpy as np
-import datetime
-
 import argparse
 import yaml
-# UI for Visualization
-from torch.utils.tensorboard import SummaryWriter
+import datetime
 
 # Import custom modules
 from src.models.cnn_backbone import get_resnet
 from src.models.vit_backbone import get_swin_t
 from src.models.lora import inject_lora
 
-from src.engine import train_one_epoch, evaluate
 from src.data.data_loader import get_dataloaders
-from src.utils.saving import EarlyStopping
+
+from src.engine import train_one_epoch, evaluate
+
 from src.utils.seed import set_seed
+from src.utils.saving import EarlyStopping
+from src.utils.mlflow_logger import MLflowLogger
 
 
 def main():
@@ -50,15 +45,15 @@ def main():
     EPOCHS = config['training']['epochs']
     LEARNING_RATE = config['training']['learning_rate']
 
-    
+    # Initialize tracking components
     current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    early_stopping = EarlyStopping(config=config,
-                                   patience=3, 
-                                   save_path=f"checkpoints/{MODEL_TYPE}_lr{LEARNING_RATE}_bs{BATCH_SIZE}_{current_time}.pth", 
-                                  )
-
-    log_dir = f"runs/{MODEL_TYPE}_lr{LEARNING_RATE}_bs{BATCH_SIZE}_{current_time}"
-    writer = SummaryWriter(log_dir=log_dir)
+    early_stopping = EarlyStopping(
+        config=config,
+        patience=3, 
+        save_path=f"checkpoints/{MODEL_TYPE}_lr{LEARNING_RATE}_bs{BATCH_SIZE}_{current_time}.pth", 
+    )
+    
+    logger = MLflowLogger(config=config, experiment_name="Transfer_Learning")
 
     # Data loading
     loaders = get_dataloaders(config=config)
@@ -71,7 +66,17 @@ def main():
         model = get_resnet(num_classes=NUM_CLASSES)
     elif MODEL_TYPE == "vit":
         model = get_swin_t(num_classes=NUM_CLASSES)
-    
+
+    # Inject LoRA if defined in the config
+    if 'lora' in config and config['lora']:
+        print(f"Injecting LoRA (r={config['lora']['r']}) ...")
+        model = inject_lora(
+            model,
+            target_layer_names=config['lora']['targets'],
+            r=config['lora']['r'],
+            alpha=config['lora']['alpha']
+        )
+
     model = model.to(device)
 
     # Filter parameters for the Optimizer
@@ -101,15 +106,24 @@ def main():
 
         print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:.2f}%")
         print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc*100:.2f}%")
-        writer.add_scalar('Loss/train', train_loss, epoch)
-        writer.add_scalar('Accuracy/train', train_acc, epoch)
-        writer.add_scalar('Loss/val', val_loss, epoch)
-        writer.add_scalar('Accuracy/val', val_acc, epoch)
+        
+        # Log to MLflow using a single dictionary call
+        logger.log_scalars({
+            'train_loss': train_loss,
+            'train_acc': train_acc,
+            'val_loss': val_loss,
+            'val_acc': val_acc
+        }, step=epoch)
 
+    # Test valuation
+    print("\nRunning test evaluation ...")
     _, test_acc = evaluate(model, test_loader, criterion, device)
-    print(f"Test Acc: {test_acc*100:.2f}%")
+    print(f"Final Test Acc: {test_acc*100:.2f}%")
+    logger.log_scalars({'test_acc': test_acc}, step=EPOCHS)
 
-    writer.close()
+    # Save the best model checkpoint straight into MLflow!
+    logger.log_artifact(early_stopping.save_path)
+    logger.close()
 
 
 if __name__ == "__main__":
