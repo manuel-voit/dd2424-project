@@ -49,7 +49,7 @@ def get_pet_dataloaders(
         indices,
         test_size=0.2,
         random_state=42,
-        stratify=binary_train_trans._labels,
+        stratify=binary_train_trans._bin_labels,
     )
     binary_train = Subset(binary_train_trans, train_indices)
     binary_val = Subset(binary_val_trans, val_indices)
