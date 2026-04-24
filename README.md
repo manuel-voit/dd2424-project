@@ -10,6 +10,17 @@ To get started, simply execute:
 python3 code/data_loader.py
 ```
 
+To start training, simply run train.py using a specific config:
+
+```bash
+python3 train.py --config configs/your_config.yaml
+```
+
+To run the tensorboard UI, which can be accessed via [localhost:6006](localhost:6006):
+```bash
+python3 -m tensorboard.main --logdir=runs
+```
+
 PyTorch will automatically download the Oxford-IIIT Pet dataset for you and load a test batch.
 
 ## Folder structure
