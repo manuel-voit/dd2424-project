@@ -6,9 +6,12 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import random
 import numpy as np
+import datetime
 
 import argparse
 import yaml
+# UI for Visualization
+from torch.utils.tensorboard import SummaryWriter
 
 # Import custom modules
 from src.models.cnn_backbone import get_binary_resnet
@@ -56,6 +59,10 @@ def main():
 
     DATA_DIR = config['data']['data_dir']
     IMAGE_SIZE = config['data']['image_size']
+    
+    current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_dir = f"runs/{MODEL_TYPE}_lr{LEARNING_RATE}_bs{BATCH_SIZE}_{current_time}"
+    writer = SummaryWriter(log_dir=log_dir)
 
     # Load Data
     loaders = get_pet_dataloaders(
@@ -95,6 +102,12 @@ def main():
         
         print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f}")
         print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
+        writer.add_scalar('Loss/train', train_loss, epoch)
+        writer.add_scalar('Accuracy/train', train_acc, epoch)
+        writer.add_scalar('Loss/val', val_loss, epoch)
+        writer.add_scalar('Accuracy/val', val_acc, epoch)
+
+    writer.close()
 
 if __name__ == "__main__":
     main()
