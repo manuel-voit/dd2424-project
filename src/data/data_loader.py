@@ -2,7 +2,6 @@ import os
 from torchvision import datasets
 from torch.utils.data import DataLoader
 from torch.utils.data import Subset
-from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import train_test_split
 
 from src.data.transforms import get_train_transforms, get_test_transforms

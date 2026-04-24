@@ -13,6 +13,6 @@ training:
   learning_rate: 0.001
   seed: 42
 data:
-  data_dir: "./data/processed"
+  data_dir: "./data"
   image_size: 224
   num_workers: 4

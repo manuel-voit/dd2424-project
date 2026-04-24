@@ -33,3 +33,6 @@ class LoRALinear(nn.Module):
         original_output = self.original_layer(x)
         lora_output = self.lora_B(self.lora_A(x)) * self.scaling
         return original_output + lora_output
+    
+def inject_lora():
+    pass
