@@ -9,6 +9,7 @@ def get_binary_resnet():
         
     # Load pretrained model
     # 'DEFAULT' automatically pulls the most up-to-date, state-of-the-art ImageNet weights
+    # Roughly 25M params
     model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
 
     # Freeze base network (loop through all parameters and disable gradient calculations)
