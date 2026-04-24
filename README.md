@@ -14,6 +14,7 @@ PyTorch will automatically download the Oxford-IIIT Pet dataset for you and load
 
 ## Folder structure
 
+```
 dd2424-project/
 ├── configs/                 
 │   ├── train_resnet.yaml    # Hyperparameters for the CNN (ResNet-50)
@@ -38,3 +39,4 @@ dd2424-project/
 ├── evaluate.py              # The script to test your saved weights against the hold-out set
 ├── requirements.txt         # Environment dependencies (PyTorch, scikit-learn, pyyaml, etc.)
 └── .gitignore               # Prevents uploading large datasets and model checkpoints to GitHub
+```
