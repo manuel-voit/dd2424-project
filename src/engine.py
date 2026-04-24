@@ -18,7 +18,8 @@ def train_one_epoch(
     progress_bar = tqdm(dataloader, desc="Training")
     
     for inputs, labels in progress_bar:
-        inputs, labels = inputs.to(device), labels.to(device)
+        inputs = inputs.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
 
         # Forward pass
         outputs = model(inputs)
@@ -60,7 +61,8 @@ def evaluate(
     progress_bar = tqdm(dataloader, desc="Evaluating")
     
     for inputs, labels in progress_bar:
-        inputs, labels = inputs.to(device), labels.to(device)
+        inputs = inputs.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
 
         outputs = model(inputs)
         loss = criterion(outputs, labels)
