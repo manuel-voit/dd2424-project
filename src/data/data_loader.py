@@ -15,12 +15,14 @@ def get_pet_dataloaders(
     pin_memory=True,
     persistent_workers=True,
     prefetch_factor=4,
+    imbalanced=False
 ):
     """   
     Args:
         data_dir (str): Directory where the dataset will be stored
         batch_size: Number of images per batch
         num_workers: Number of CPU for data loading
+        imbalanced: Whether to create an imbalanced version of the dataset (e.g. 20% of the training images for each cat breed)
         
     Returnns:
         dict: dictionary containing the train and test loaders for both tasks.
@@ -32,8 +34,7 @@ def get_pet_dataloaders(
     train_transform = get_train_transforms()
     test_transform = get_test_transforms()
 
-    # Binary dataset (0=Cat, 1=Dog)
-    # Different transforms for train and val    
+    # Load Base datasets
     binary_train_trans = datasets.OxfordIIITPet(
         root=data_dir, split='trainval', target_types='binary-category', 
         transform=train_transform, download=True
@@ -42,26 +43,6 @@ def get_pet_dataloaders(
         root=data_dir, split='trainval', target_types='binary-category', 
         transform=test_transform, download=True
     )
-    # Splitting train and val set from trainval in OxfordIIIT Dataset
-    dataset_size = len(binary_train_trans)
-    indices = list(range(dataset_size))
-    train_indices, val_indices = train_test_split(
-        indices,
-        test_size=0.2,
-        random_state=42,
-        stratify=binary_train_trans._bin_labels,
-    )
-    binary_train = Subset(binary_train_trans, train_indices)
-    binary_val = Subset(binary_val_trans, val_indices)
-
-    binary_test = datasets.OxfordIIITPet(
-        root=data_dir, split='test', target_types='binary-category', 
-        transform=test_transform, download=True
-    )
-
-    # Multi-class dataset (0-36)
-    # Different transforms for train and val    
-
     multi_train_trans = datasets.OxfordIIITPet(
         root=data_dir, split='trainval', target_types='category', 
         transform=train_transform, download=True
@@ -71,24 +52,50 @@ def get_pet_dataloaders(
         transform=test_transform, download=True
     )
 
+    # Split Train and Val (stratify)
     dataset_size = len(multi_train_trans)
     indices = list(range(dataset_size))
+    
     train_indices, val_indices = train_test_split(
         indices,
         test_size=0.2,
         random_state=42,
         stratify=multi_train_trans._labels,
     )
+
+    # Apply imbalance to training set
+    if imbalanced:
+        # Find idx of cats (0) and dogs (1) in the training set
+        cat_indices = [i for i in train_indices if binary_train_trans._bin_labels[i] == 0]
+        dog_indices = [i for i in train_indices if binary_train_trans._bin_labels[i] == 1]
+
+        # Downsample cats to 20%, stratifying by breed (even reduction)
+        cat_breeds = [multi_train_trans._labels[i] for i in cat_indices]
+        reduced_cat_indices, _ = train_test_split(
+            cat_indices, train_size=0.2, random_state=42, stratify=cat_breeds
+        )
+
+        # Recombine indices
+        train_indices = reduced_cat_indices + dog_indices
+        print(f"Dataset Imbalanced. Kept {len(reduced_cat_indices)} cats and {len(dog_indices)} dogs.")
+
+    # Create Subsets
+    binary_train = Subset(binary_train_trans, train_indices)
+    binary_val = Subset(binary_val_trans, val_indices)
     multi_train = Subset(multi_train_trans, train_indices)
     multi_val = Subset(multi_val_trans, val_indices)
 
+    # Load Test Datasets
+    binary_test = datasets.OxfordIIITPet(
+        root=data_dir, split='test', target_types='binary-category', 
+        transform=test_transform, download=True
+    )
     multi_test = datasets.OxfordIIITPet(
         root=data_dir, split='test', target_types='category', 
         transform=test_transform, download=True
     )
 
-    # Keep workers alive between epochs to avoid costly process respawn on Windows.
-    # Pinning host memory speeds up CPU->GPU transfers when using CUDA.
+    # Dataloader Kwargs
     loader_kwargs = {
         'batch_size': batch_size,
         'num_workers': num_workers,
@@ -98,8 +105,7 @@ def get_pet_dataloaders(
         loader_kwargs['persistent_workers'] = persistent_workers
         loader_kwargs['prefetch_factor'] = prefetch_factor
 
-    # Create data loaders for both tasks
-    # Pulls a batch-size nr of samples from the dataset objects, shuffles, and stacks them into torch tensor
+    # Dataloaders
     loaders = {
         'binary': {
             'train': DataLoader(binary_train, shuffle=True, **loader_kwargs),
@@ -117,16 +123,12 @@ def get_pet_dataloaders(
 
 # Testing block
 if __name__ == "__main__":
-    # Test loader function
-    loaders = get_pet_dataloaders(batch_size=16)
+    # Test standard loader
+    print("\nSTANDARD DATASET\n")
+    loaders_standard = get_pet_dataloaders(batch_size=16, imbalanced=False)
+    print(f"Standard Train Size: {len(loaders_standard['multi']['train'].dataset)}")
     
-    # Fetch a single batch to verify
-    binary_images, binary_labels = next(iter(loaders['binary']['train']))
-    print("\nDATALOADER SANITY CHECK:\n")
-    print(f"Binary Batch Image Shape: {binary_images.shape}")
-    print(f"Binary Batch Labels Shape: {binary_labels.shape}")
-    print(f"Binary Labels Example (0=Cat, 1=Dog): {binary_labels[:5].tolist()}")
-    
-    multi_images, multi_labels = next(iter(loaders['multi']['train']))
-    print(f"Multi-Class Batch Labels Shape: {multi_labels.shape}")
-    print(f"Multi-Class Labels Example (0-36): {multi_labels[:5].tolist()}")
+    # Test imbalanced loader
+    print("\nIMBALANCED DATASET\n")
+    loaders_imbalanced = get_pet_dataloaders(batch_size=16, imbalanced=True)
+    print(f"Imbalanced Train Size: {len(loaders_imbalanced['multi']['train'].dataset)}")
