@@ -1,3 +1,27 @@
-.DS_STORE
-assignment-description
-dataset
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+env/
+.env/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data and Logs
+data/*
+!data/.gitkeep
+logs/
+runs/
+tensorboard/
+
+# System Files
+.DS_Store
+Thumbs.db
