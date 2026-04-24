@@ -2,6 +2,11 @@ model:
   type: "vit"
   name: "swin_t"
   num_classes: 37
+lora:
+  r: 8
+  alpha: 16
+  # Targets the Attention Query/Key/Value projections
+  targets: ["qkv"]
 training:
   batch_size: 32
   epochs: 10
