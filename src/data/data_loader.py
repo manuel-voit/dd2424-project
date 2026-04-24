@@ -1,8 +1,9 @@
 import os
 from torchvision import datasets
 from torch.utils.data import DataLoader
+from sklearn.model_selection import train_test_split
 
-from transforms import get_train_transforms, get_test_transforms
+from transforms import get_trainval_transforms, get_test_transforms
 
 # Download dataset (if not available) and return DataLoaders for binary and multi-class classification
 def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
@@ -19,24 +20,42 @@ def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
     # ensure target directory exists
     os.makedirs(data_dir, exist_ok=True)
     
-    train_transform = get_train_transforms()
+    train_transform = get_val_transforms()
     test_transform = get_test_transforms()
 
     # Binary dataset (0=Cat, 1=Dog)
-    binary_train = datasets.OxfordIIITPet(
+    binary_trainval = datasets.OxfordIIITPet(
         root=data_dir, split='trainval', target_types='binary-category', 
         transform=train_transform, download=True
     )
+
+    dataset_size = len(binary_trainval)
+    indices = list(range(dataset_size))
+
+    train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42)
+
+    binary_train = Subset(binary_trainval, train_indices)
+    binary_val = Subset(binary_trainval, val_indices)
+
     binary_test = datasets.OxfordIIITPet(
         root=data_dir, split='test', target_types='binary-category', 
         transform=test_transform, download=True
     )
 
     # Multi-class dataset (0-36)
-    multi_train = datasets.OxfordIIITPet(
+    multi_trainval = datasets.OxfordIIITPet(
         root=data_dir, split='trainval', target_types='category', 
         transform=train_transform, download=True
     )
+
+    dataset_size = len(multi_trainval)
+    indices = list(range(dataset_size))
+
+    train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42)
+
+    multi_train = Subset(multi_trainval, train_indices)
+    multi_val = Subset(multi_trainval, val_indices)
+
     multi_test = datasets.OxfordIIITPet(
         root=data_dir, split='test', target_types='category', 
         transform=test_transform, download=True
@@ -47,10 +66,12 @@ def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
     loaders = {
         'binary': {
             'train': DataLoader(binary_train, batch_size=batch_size, shuffle=True, num_workers=num_workers),
+            'val': DataLoader(binary_val, batch_size=batch_size, shuffle=False, num_workers=num_workers),
             'test': DataLoader(binary_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
         },
         'multi': {
-            'train': DataLoader(multi_train, batch_size=batch_size, shuffle=True, num_workers=num_workers),
+            'train': DataLoader(multi_trainval, batch_size=batch_size, shuffle=True, num_workers=num_workers),
+            'val': DataLoader(multi_val, batch_size=batch_size, shuffle=False, num_workers=num_workers),
             'test': DataLoader(multi_test, batch_size=batch_size, shuffle=False, num_workers=num_workers)
         }
     }
