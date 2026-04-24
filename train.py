@@ -16,7 +16,7 @@ from src.engine import train_one_epoch, evaluate
 
 from src.utils.seed import set_seed
 from src.utils.saving import EarlyStopping
-from src.utils.mlflow_logger import MLflowLogger
+from src.utils.tensorboard_logger import TensorBoardLogger
 
 
 def main():
@@ -53,7 +53,7 @@ def main():
         save_path=f"checkpoints/{MODEL_TYPE}_lr{LEARNING_RATE}_bs{BATCH_SIZE}_{current_time}.pth", 
     )
     
-    logger = MLflowLogger(config=config, experiment_name="Transfer_Learning")
+    logger = TensorBoardLogger(config=config)
 
     # Data loading
     loaders = get_dataloaders(config=config)
@@ -107,22 +107,27 @@ def main():
         print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:.2f}%")
         print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc*100:.2f}%")
         
-        # Log to MLflow using a single dictionary call
-        logger.log_scalars({
-            'train_loss': train_loss,
-            'train_acc': train_acc,
-            'val_loss': val_loss,
-            'val_acc': val_acc
-        }, step=epoch)
+        # Log to TensorBoard using grouped tags
+        logger.log_scalars('Loss', {'train': train_loss, 'val': val_loss}, epoch)
+        logger.log_scalars('Accuracy', {'train': train_acc, 'val': val_acc}, epoch)
 
     # Test valuation
     print("\nRunning test evaluation ...")
+    
+    # Load the best weights before testing (in case early stopping triggered)
+    model.load_state_dict(torch.load(early_stopping.save_path)['model_state_dict'], strict=False)
     _, test_acc = evaluate(model, test_loader, criterion, device)
     print(f"Final Test Acc: {test_acc*100:.2f}%")
-    logger.log_scalars({'test_acc': test_acc}, step=EPOCHS)
+    
+    # Log hyperparameters and final metrics
+    logger.log_hparams(
+        config=config, 
+        final_metrics={
+            'test_acc': test_acc
+        },
+        step=EPOCHS
+    )
 
-    # Save the best model checkpoint straight into MLflow!
-    logger.log_artifact(early_stopping.save_path)
     logger.close()
 
 
