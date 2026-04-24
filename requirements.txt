@@ -1,0 +1,17 @@
+# Core Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Utilities
+# For training progress bars
+tqdm>=4.65.0
+# For parsing config files
+pyyaml>=6.0        
+# For stratified Train/Val splits 
+scikit-learn>=1.2.0
+
+# Analysis
+# For visualizing training curves
+matplotlib>=3.7.0
+# For logging metrics 
+tensorboard>=2.13.0
