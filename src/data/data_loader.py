@@ -24,18 +24,21 @@ def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
     test_transform = get_test_transforms()
 
     # Binary dataset (0=Cat, 1=Dog)
-    binary_trainval = datasets.OxfordIIITPet(
+    # Different transforms for train and val    
+    binary_train_trans = datasets.OxfordIIITPet(
         root=data_dir, split='trainval', target_types='binary-category', 
         transform=train_transform, download=True
     )
-
-    dataset_size = len(binary_trainval)
+    binary_val_trans = datasets.OxfordIIITPet(
+        root=data_dir, split='trainval', target_types='binary-category', 
+        transform=test_transform, download=True
+    )
+    # Splitting train and val set from trainval in OxfordIIIT Dataset
+    dataset_size = len(binary_train_trans)
     indices = list(range(dataset_size))
-
     train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42)
-
-    binary_train = Subset(binary_trainval, train_indices)
-    binary_val = Subset(binary_trainval, val_indices)
+    binary_train = Subset(binary_train_trans, train_indices)
+    binary_val = Subset(binary_val_trans, val_indices)
 
     binary_test = datasets.OxfordIIITPet(
         root=data_dir, split='test', target_types='binary-category', 
@@ -43,18 +46,22 @@ def get_pet_dataloaders(data_dir='./data', batch_size=32, num_workers=2):
     )
 
     # Multi-class dataset (0-36)
-    multi_trainval = datasets.OxfordIIITPet(
+    # Different transforms for train and val    
+
+    multi_train_trans = datasets.OxfordIIITPet(
         root=data_dir, split='trainval', target_types='category', 
         transform=train_transform, download=True
     )
+    multi_val_trans = datasets.OxfordIIITPet(
+        root=data_dir, split='trainval', target_types='category', 
+        transform=test_transform, download=True
+    )
 
-    dataset_size = len(multi_trainval)
+    dataset_size = len(multi_train_trans)
     indices = list(range(dataset_size))
-
     train_indices, val_indices = train_test_split(indices, test_size=0.2, random_state=42)
-
-    multi_train = Subset(multi_trainval, train_indices)
-    multi_val = Subset(multi_trainval, val_indices)
+    multi_train = Subset(multi_train_trans, train_indices)
+    multi_val = Subset(multi_val_trans, val_indices)
 
     multi_test = datasets.OxfordIIITPet(
         root=data_dir, split='test', target_types='category', 
