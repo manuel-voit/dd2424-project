@@ -2,6 +2,11 @@ model:
   type: "resnet"
   name: "resnet50"
   num_classes: 37
+lora:
+  r: 8
+  alpha: 16
+  # Targets the 3x3 convolutions in ResNet blocks
+  targets: ["conv2"]
 training:
   batch_size: 32
   epochs: 10

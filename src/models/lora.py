@@ -34,5 +34,5 @@ class LoRALinear(nn.Module):
         lora_output = self.lora_B(self.lora_A(x)) * self.scaling
         return original_output + lora_output
     
-def inject_lora():
+def inject_lora(model: nn.Module, target_layer_names: list, r: int = 4, alpha: int = 8):
     pass

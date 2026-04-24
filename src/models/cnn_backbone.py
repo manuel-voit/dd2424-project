@@ -1,12 +1,12 @@
 import torch.nn as nn
 from torchvision import models
 
-def get_binary_resnet():
+
+def get_resnet(num_classes: int):
     """
     Loads pre-trained ResNet-50, freezes its convolutional base, 
-    and replaces the final classification layer for binary classification
+    and replaces the classification head.
     """
-        
     # Load pretrained model
     # 'DEFAULT' automatically pulls the most up-to-date, state-of-the-art ImageNet weights
     # Roughly 25M params
@@ -21,16 +21,16 @@ def get_binary_resnet():
     num_ftrs = model.fc.in_features
     
     # Overwrite fc with new Linear layer
-    # Output features = 2, since binary task (0: Cat, 1: Dog)
     # when initializing, requires_grad is true by default -> no need to 'unfreeze'
-    model.fc = nn.Linear(in_features=num_ftrs, out_features=2)
+    model.fc = nn.Linear(in_features=num_ftrs, out_features=num_classes)
     
     return model
+
 
 # Testing block
 if __name__ == "__main__":
     # Instantiate model
-    binary_model = get_binary_resnet()
+    binary_model = get_resnet(num_classes=2)
     
     # Sanity check
     print("\nMODEL SANITY CHECK:\n")

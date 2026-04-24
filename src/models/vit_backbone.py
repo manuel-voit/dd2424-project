@@ -2,12 +2,11 @@ import torch.nn as nn
 from torchvision import models
 
 
-def get_binary_swin_t():
+def get_swin_t(num_classes: int):
 	"""
 	Loads pre-trained Swin-T, freezes its feature extractor,
-	and replaces the classification for binary classification.
+	and replaces the classification head.
 	"""
-
 	# Load pretrained model
 	# 'DEFAULT' pulls the recommended ImageNet weights
 	# Roughly 28M params
@@ -17,9 +16,9 @@ def get_binary_swin_t():
 	for param in model.parameters():
 		param.requires_grad = False
 
-	# Replace classifier head to output 2 classes (0: Cat, 1: Dog)
+	# Replace classifier head
 	num_ftrs = model.head.in_features
-	model.head = nn.Linear(in_features=num_ftrs, out_features=2)
+	model.head = nn.Linear(in_features=num_ftrs, out_features=num_classes)
 
 	return model
 
@@ -27,7 +26,7 @@ def get_binary_swin_t():
 # Testing block
 if __name__ == "__main__":
 	# Instantiate model
-	binary_model = get_binary_swin_t()
+	binary_model = get_swin_t(num_classes=2)
 
 	# Sanity check
 	print("\nMODEL SANITY CHECK:\n")

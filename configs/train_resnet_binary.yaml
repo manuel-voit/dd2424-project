@@ -1,14 +1,14 @@
 model:
   type: "resnet"
   name: "resnet50"
-  num_classes: 37
+  num_classes: 2
 training:
   batch_size: 32
   epochs: 10
   learning_rate: 0.001
   seed: 42
 data:
-  name: "oxford_pets"
+  name: "oxford_pets_binary"
   data_dir: "./data"
   image_size: 224
   num_workers: 4

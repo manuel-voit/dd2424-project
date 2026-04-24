@@ -14,23 +14,24 @@ import yaml
 from torch.utils.tensorboard import SummaryWriter
 
 # Import custom modules
-from src.models.cnn_backbone import get_binary_resnet
-from src.models.vit_backbone import get_binary_swin_t
+from src.models.cnn_backbone import get_resnet
+from src.models.vit_backbone import get_swin_t
 from src.models.lora import inject_lora
 
 from src.engine import train_one_epoch, evaluate
-from src.data.data_loader import get_pet_dataloaders
+from src.data.data_loader import get_dataloaders
+from src.utils.saving import EarlyStopping
+from src.utils.seed import set_seed
 
-
-def set_seed(seed=42):
-    """Ensures our ResNet vs ViT comparisons are completely fair and reproducible."""
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    torch.backends.cudnn.deterministic = True
 
 def main():
+    parser = argparse.ArgumentParser(description="Train CNN/ViT networks")
+    parser.add_argument('--config', type=str, required=True, help="Path to config yaml")
+    args = parser.parse_args()
+
+    with open(args.config, 'r') as file:
+        config = yaml.safe_load(file)
+
     # Setup
     set_seed(42)
     if torch.cuda.is_available():
@@ -41,14 +42,6 @@ def main():
         device = torch.device("cpu")
     print(f"Using device: {device}")
 
-
-    parser = argparse.ArgumentParser(description="Train CNN/ViT networs")
-    parser.add_argument('--config', type=str, required=True, help="Path to config yaml")
-    args = parser.parse_args()
-
-    with open(args.config, 'r') as file:
-        config = yaml.safe_load(file)
-
     # Extract config variables
     MODEL_TYPE = config['model']['type']
     NUM_CLASSES = config['model']['num_classes']
@@ -57,27 +50,27 @@ def main():
     EPOCHS = config['training']['epochs']
     LEARNING_RATE = config['training']['learning_rate']
 
-    DATA_DIR = config['data']['data_dir']
-    IMAGE_SIZE = config['data']['image_size']
     
-    current_time = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    early_stopping = EarlyStopping(config=config,
+                                   patience=3, 
+                                   save_path=f"checkpoints/{MODEL_TYPE}_lr{LEARNING_RATE}_bs{BATCH_SIZE}_{current_time}.pth", 
+                                  )
+
     log_dir = f"runs/{MODEL_TYPE}_lr{LEARNING_RATE}_bs{BATCH_SIZE}_{current_time}"
     writer = SummaryWriter(log_dir=log_dir)
 
-    # Load Data
-    loaders = get_pet_dataloaders(
-        data_dir=DATA_DIR,
-        batch_size=BATCH_SIZE,
-        num_workers=config['data']['num_workers']
-    )
-
-    train_loader, val_loader, test_loader = loaders['binary']['train'], loaders['binary']['val'], loaders['binary']['test']
+    # Data loading
+    loaders = get_dataloaders(config=config)
+    train_loader = loaders['train']
+    val_loader = loaders['val']
+    test_loader = loaders['test']
 
     # Model branching
     if MODEL_TYPE == "resnet":
-        model = get_binary_resnet()
+        model = get_resnet(num_classes=NUM_CLASSES)
     elif MODEL_TYPE == "vit":
-        model = get_binary_swin_t()
+        model = get_swin_t(num_classes=NUM_CLASSES)
     
     model = model.to(device)
 
@@ -100,14 +93,24 @@ def main():
         train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = evaluate(model, val_loader, criterion, device)
         
-        print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f}")
-        print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
+        # Check early stopping & save weights
+        early_stopping(val_loss, model)
+        if early_stopping.early_stop:
+            print("Early stopping triggered! Ending training.")
+            break
+
+        print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:.2f}%")
+        print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc*100:.2f}%")
         writer.add_scalar('Loss/train', train_loss, epoch)
         writer.add_scalar('Accuracy/train', train_acc, epoch)
         writer.add_scalar('Loss/val', val_loss, epoch)
         writer.add_scalar('Accuracy/val', val_acc, epoch)
 
+    _, test_acc = evaluate(model, test_loader, criterion, device)
+    print(f"Test Acc: {test_acc*100:.2f}%")
+
     writer.close()
+
 
 if __name__ == "__main__":
     main()

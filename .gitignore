@@ -22,6 +22,9 @@ logs/
 runs/
 tensorboard/
 
+# Checkpoints
+checkpoints/
+
 # System Files
 .DS_Store
 Thumbs.db

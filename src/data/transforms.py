@@ -2,11 +2,11 @@ import torch
 from torchvision.transforms import v2 as transforms
 
 # Transformation pipeline for training data (augmentation + normalization)
-def get_train_transforms():
+def get_train_transforms(image_size: int = 224):
     return transforms.Compose([
         # Random size scaling and cropping
-        # Randomly crop portion of the image (80% to 100% of original area) and resize to 224x224
-        transforms.RandomResizedCrop(size=(224, 224), scale=(0.8, 1.0)),
+        # Randomly crop portion of the image (80% to 100% of original area) and resize to image_size x image_size
+        transforms.RandomResizedCrop(size=(image_size, image_size), scale=(0.8, 1.0)),
         
         # horizontal flip (50% chance)
         transforms.RandomHorizontalFlip(p=0.5),
@@ -28,13 +28,9 @@ def get_train_transforms():
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-def get_test_transforms():
-    """
-    Returns the transformation pipeline for TESTING/VALIDATION data.
-    Strictly deterministic operations: only resizing and normalizing.
-    """
+def get_val_test_transforms(image_size: int = 224):
     return transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((image_size, image_size)),
         transforms.ToImage(), 
         transforms.ToDtype(torch.float32, scale=True),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
