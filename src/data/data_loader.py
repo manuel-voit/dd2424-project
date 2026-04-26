@@ -4,7 +4,7 @@ from src.data.pet_dataset import get_pet_dataloaders
 def get_dataloaders(config: dict):
     dataset_name = config['data']['name'].lower()
     
-    if dataset_name == "oxford_pets" or "oxford_pets_binary":
+    if dataset_name == "oxford_pets" or dataset_name =="oxford_pets_binary":
 
         is_binary = True if dataset_name == "oxford_pets_binary" else False
 

@@ -128,9 +128,9 @@ if __name__ == "__main__":
     # Test standard loader
     print("\nSTANDARD DATASET\n")
     loaders_standard = get_pet_dataloaders(batch_size=16, imbalanced=False)
-    print(f"Standard Train Size: {len(loaders_standard['multi']['train'].dataset)}")
+    print(f"Standard Train Size: {len(loaders_standard['train'].dataset)}")
     
     # Test imbalanced loader
     print("\nIMBALANCED DATASET\n")
     loaders_imbalanced = get_pet_dataloaders(batch_size=16, imbalanced=True)
-    print(f"Imbalanced Train Size: {len(loaders_imbalanced['multi']['train'].dataset)}")
+    print(f"Imbalanced Train Size: {len(loaders_imbalanced['train'].dataset)}")
