@@ -95,31 +95,31 @@ def main():
     for epoch in range(EPOCHS):
         print(f"\nEpoch {epoch+1}/{EPOCHS}")
         
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
-        val_loss, val_acc = evaluate(model, val_loader, criterion, device)
+        train_metrics = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        val_metrics = evaluate(model, val_loader, criterion, device)
         
         # Check early stopping & save weights
-        early_stopping(val_loss, model)
+        early_stopping(val_metrics['loss'], model)
         if early_stopping.early_stop:
             print("Early stopping triggered! Ending training.")
             break
 
-        print(f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc*100:.2f}%")
-        print(f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc*100:.2f}%")
-        
+        print(f"Train Loss: {train_metrics['loss']:.4f} | Train Acc: {train_metrics['accuracy']*100:.2f}% | Train F1: {train_metrics['f1_macro']:.4f}")
+        print(f"Val Loss: {val_metrics['loss']:.4f} | Val Acc: {val_metrics['accuracy']*100:.2f}% | Val F1:   {val_metrics['f1_macro']:.4f}")
+
+        train_log = {f"train_{k}": v for k, v in train_metrics.items()}
+        val_log = {f"val_{k}": v for k, v in val_metrics.items()}
+
         # Log to MLflow using a single dictionary call
-        logger.log_scalars({
-            'train_loss': train_loss,
-            'train_acc': train_acc,
-            'val_loss': val_loss,
-            'val_acc': val_acc
-        }, step=epoch)
+        logger.log_scalars({**train_log, **val_log}, step=epoch)
 
     # Test valuation
     print("\nRunning test evaluation ...")
-    _, test_acc = evaluate(model, test_loader, criterion, device)
-    print(f"Final Test Acc: {test_acc*100:.2f}%")
-    logger.log_scalars({'test_acc': test_acc}, step=EPOCHS)
+    test_metrics = evaluate(model, test_loader, criterion, device)
+    print(f"Final Test Acc: {test_metrics['accuracy']*100:.2f}% | Final Test F1: {test_metrics['f1_macro']:.4f}")
+    
+    test_log = {f"test_{k}": v for k, v in test_metrics.items()}
+    logger.log_scalars(test_log, step=EPOCHS)
 
     # Save the best model checkpoint straight into MLflow!
     logger.log_artifact(early_stopping.save_path)

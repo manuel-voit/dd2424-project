@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+from src.utils.metrics import MetricTracker
+
 def train_one_epoch(
     model: nn.Module, 
     dataloader: torch.utils.data.DataLoader, 
@@ -10,9 +12,7 @@ def train_one_epoch(
     device: torch.device
 ):
     model.train()
-    running_loss = 0.0
-    correct = 0
-    total_images = 0
+    tracker = MetricTracker()
 
     # tqdm for progress bar
     progress_bar = tqdm(dataloader, desc="Training")
@@ -31,20 +31,17 @@ def train_one_epoch(
         optimizer.step()
 
         # Track metrics
-        running_loss += loss.item() * inputs.size(0)
         _, predicted = outputs.max(1)
-        total_images += labels.size(0)
-        correct += predicted.eq(labels).sum().item()
+        tracker.update(predicted, labels, loss.item())
 
         # Update progress bar
+        batch_acc = tracker.get_batch_accuracy(predicted, labels)
         progress_bar.set_postfix({
             'loss': f"{loss.item():.4f}", 
-            'acc': f"{100. * correct / total_images:.2f}%"
+            'acc': f"{batch_acc*100:.1f}%"
         })
 
-    epoch_loss = running_loss / total_images
-    epoch_acc = correct / total_images
-    return epoch_loss, epoch_acc
+    return tracker.compute_epoch_metrics()
 
 @torch.no_grad()
 def evaluate(
@@ -54,9 +51,7 @@ def evaluate(
     device: torch.device
 ):
     model.eval()
-    running_loss = 0.0
-    correct = 0
-    total_images = 0
+    tracker = MetricTracker()
 
     progress_bar = tqdm(dataloader, desc="Evaluating")
     
@@ -67,11 +62,10 @@ def evaluate(
         outputs = model(inputs)
         loss = criterion(outputs, labels)
 
-        running_loss += loss.item() * inputs.size(0)
         _, predicted = outputs.max(1)
-        total_images += labels.size(0)
-        correct += predicted.eq(labels).sum().item()
+        tracker.update(predicted, labels, loss.item())
 
-    epoch_loss = running_loss / total_images
-    epoch_acc = correct / total_images
-    return epoch_loss, epoch_acc
+        batch_acc = tracker.get_batch_accuracy(predicted, labels)
+        progress_bar.set_postfix({'loss': f"{loss.item():.4f}", 'acc': f"{batch_acc*100:.1f}%"})
+
+    return tracker.compute_epoch_metrics()
