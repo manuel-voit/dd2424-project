@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from typing import Optional
 import mlflow
 import dagshub
 import matplotlib.pyplot as plt
@@ -7,7 +8,7 @@ import seaborn as sns
 
 
 class MLflowLogger:
-    def __init__(self, config: dict, experiment_name: str | None = None):
+    def __init__(self, config: dict, experiment_name: Optional[str] = None):
         logging_cfg = config.get('logging', {})
         dagshub.init(
             repo_owner=logging_cfg.get('dagshub_repo_owner', "manuel.voit"),  
