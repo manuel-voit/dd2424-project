@@ -29,7 +29,8 @@ def main():
         config = yaml.safe_load(file)
 
     # Setup
-    set_seed(42)
+    seed = config['training'].get('seed', 42)
+    set_seed(seed)
     if torch.cuda.is_available():
         device = torch.device("cuda")
     elif torch.backends.mps.is_available():
@@ -37,6 +38,7 @@ def main():
     else:
         device = torch.device("cpu")
     print(f"Using device: {device}")
+    print(f"Using seed: {seed}")
 
     # Extract config variables
     MODEL_TYPE = config['model']['type']

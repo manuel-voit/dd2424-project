@@ -13,9 +13,6 @@ def main():
     parser.add_argument('--checkpoint', type=str, required=True, help="Path to the .pth checkpoint file")
     args = parser.parse_args()
 
-    # Setup
-    set_seed(42)
-
     # Setup device
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -26,6 +23,11 @@ def main():
 
     # Load the model and its config
     model, config = load_model_from_checkpoint(args.checkpoint, device)
+
+    # Setup
+    seed = config['training'].get('seed', 42)
+    set_seed(seed)
+    print(f"Using seed: {seed}")
 
     # Recreate the dataloaders using the settings from the config
     loaders = get_dataloaders(config=config)

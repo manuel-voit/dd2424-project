@@ -14,6 +14,7 @@ def get_pet_dataloaders(
     image_size: int = 224,
     batch_size=32,
     num_workers=2,
+    seed: int = 42,
     pin_memory=True,
     persistent_workers=True,
     prefetch_factor=4,
@@ -61,7 +62,7 @@ def get_pet_dataloaders(
     train_indices, val_indices = train_test_split(
         indices,
         test_size=0.2,
-        random_state=42,
+        random_state=seed,
         stratify=multi_train_trans._labels,
     )
 
@@ -74,7 +75,7 @@ def get_pet_dataloaders(
         # Downsample cats to 20%, stratifying by breed (even reduction)
         cat_breeds = [multi_train_trans._labels[i] for i in cat_indices]
         reduced_cat_indices, _ = train_test_split(
-            cat_indices, train_size=0.2, random_state=42, stratify=cat_breeds
+            cat_indices, train_size=0.2, random_state=seed, stratify=cat_breeds
         )
 
         # Recombine indices

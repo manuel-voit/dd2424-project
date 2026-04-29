@@ -13,6 +13,7 @@ def get_dataloaders(config: dict):
             image_size=config['data']['image_size'],
             batch_size=config['training']['batch_size'],
             num_workers=config['data']['num_workers'],
+            seed=config['training'].get('seed', 42),
             binary=is_binary
         )
         
