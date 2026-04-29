@@ -1,6 +1,4 @@
 import torch
-import torch.nn as nn
-import torch.optim as optim
 import argparse
 import yaml
 import datetime
@@ -15,15 +13,19 @@ from src.data.data_loader import get_dataloaders
 from src.engine import train_one_epoch, evaluate
 
 from src.utils.seed import set_seed
-from src.utils.saving import EarlyStopping
 from src.utils.mlflow_logger import MLflowLogger
 from src.utils.loading import load_model_from_checkpoint
+from src.utils.training_setup import (
+    build_early_stopping,
+    build_loss,
+    build_optimizer,
+    build_scheduler,
+)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Train CNN/ViT networks")
     parser.add_argument('--config', type=str, required=True, help="Path to config yaml")
-    parser.add_argument('--disable-mlflow', action='store_true', help="Disable MLflow logging for this run")
     args = parser.parse_args()
 
     with open(args.config, 'r') as file:
@@ -47,22 +49,23 @@ def main():
 
     BATCH_SIZE = config['training']['batch_size']
     EPOCHS = config['training']['epochs']
-    LEARNING_RATE = config['training']['learning_rate']
-    LORA_LEARNING_RATE = config.get('lora', {}).get('learning_rate', LEARNING_RATE)
 
     # Initialize tracking components
     current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    early_stopping = EarlyStopping(
-        config=config,
-        patience=3, 
-        save_path=f"checkpoints/{MODEL_TYPE}_lr{LEARNING_RATE}_bs{BATCH_SIZE}_{current_time}.pth", 
+    logging_cfg = config.get('logging', {})
+    checkpoint_dir = logging_cfg.get('checkpoint_dir', 'checkpoints')
+    checkpoint_prefix = logging_cfg.get(
+        'checkpoint_prefix', f"{MODEL_TYPE}_bs{BATCH_SIZE}_{current_time}"
     )
+    checkpoint_path = f"{checkpoint_dir}/{checkpoint_prefix}.pth"
+
+    early_stopping = build_early_stopping(config, checkpoint_path)
     
     logger = None
-    if args.disable_mlflow:
-        print("MLflow logging disabled.")
+    if logging_cfg.get('enabled', True):
+        logger = MLflowLogger(config=config)
     else:
-        logger = MLflowLogger(config=config, experiment_name="Transfer_Learning")
+        print("MLflow logging disabled.")
 
     # Data loading
     loaders = get_dataloaders(config=config)
@@ -87,6 +90,9 @@ def main():
         )
 
     model = model.to(device)
+    optimizer = build_optimizer(model, config)
+    criterion = build_loss(config)
+    scheduler, scheduler_needs_metric = build_scheduler(optimizer, config)
 
     # Split trainable parameters so LoRA adapters can use their own learning rate
     lora_params = []
@@ -107,24 +113,15 @@ def main():
     print(f"Total Parameters: {total_params:,}")
     print(f"Trainable Parameters: {trained_params:,} ({100 * trained_params / total_params:.2f}%)")
 
-    optimizer_param_groups = []
+    optimizer_cfg = config.get('optimizer', {})
+    print(f"Optimizer: {optimizer_cfg.get('name', 'adamw')}")
+    print(f"Loss: {config.get('loss', {}).get('name', 'cross_entropy')}")
+    scheduler_cfg = config.get('scheduler', {})
+    print(f"Scheduler: {scheduler_cfg.get('name', 'none')}")
     if non_lora_trainable_params:
-        optimizer_param_groups.append({
-            'params': non_lora_trainable_params,
-            'lr': LEARNING_RATE
-        })
+        print(f"Head/Base trainable LR: {optimizer_cfg.get('lr', config['training']['learning_rate'])}")
     if lora_params:
-        optimizer_param_groups.append({
-            'params': lora_params,
-            'lr': LORA_LEARNING_RATE
-        })
-
-    print(f"Head/Base trainable LR: {LEARNING_RATE}")
-    if lora_params:
-        print(f"LoRA trainable LR: {LORA_LEARNING_RATE}")
-
-    optimizer = optim.AdamW(optimizer_param_groups)
-    criterion = nn.CrossEntropyLoss()
+        print(f"LoRA trainable LR: {optimizer_cfg.get('lora_lr', optimizer_cfg.get('lr', config['training']['learning_rate']))}")
 
     # Training Loop
     for epoch in range(EPOCHS):
@@ -134,10 +131,17 @@ def main():
         val_metrics = evaluate(model, val_loader, criterion, device)
         
         # Check early stopping & save weights
-        early_stopping(val_metrics['loss'], model)
-        if early_stopping.early_stop:
-            print("Early stopping triggered! Ending training.")
-            break
+        if scheduler is not None:
+            if scheduler_needs_metric:
+                scheduler.step(val_metrics['loss'])
+            else:
+                scheduler.step()
+
+        if early_stopping is not None:
+            early_stopping(val_metrics['loss'], model)
+            if early_stopping.early_stop:
+                print("Early stopping triggered! Ending training.")
+                break
 
         print(f"Train Loss: {train_metrics['loss']:.4f} | Train Acc: {train_metrics['accuracy']*100:.2f}% | Train F1: {train_metrics['f1_macro']:.4f}")
         print(f"Val Loss: {val_metrics['loss']:.4f} | Val Acc: {val_metrics['accuracy']*100:.2f}% | Val F1:   {val_metrics['f1_macro']:.4f}")
@@ -154,7 +158,8 @@ def main():
             logger.log_scalars({**train_log, **val_log}, step=epoch)
 
     # Test evaluation should use the best checkpoint
-    model, _ = load_model_from_checkpoint(early_stopping.save_path, device)
+    if early_stopping is not None:
+        model, _ = load_model_from_checkpoint(early_stopping.save_path, device)
 
     # Test evaluation
     print("\nRunning test evaluation ...")
@@ -164,10 +169,12 @@ def main():
     
     test_log = {f"test_{k}": v for k, v in test_metrics.items()}
     if logger is not None:
-        logger.log_scalars(test_log, step=EPOCHS)
-        logger.log_confusion_matrix(cm, step=EPOCHS)
+        if logging_cfg.get('log_metrics', True):
+            logger.log_scalars(test_log, step=EPOCHS)
+        if logging_cfg.get('log_confusion_matrix', True):
+            logger.log_confusion_matrix(cm, step=EPOCHS)
 
-    if logger is not None:
+    if logger is not None and logging_cfg.get('log_artifact', True) and early_stopping is not None:
         # Save the best model checkpoint straight into MLflow!
         logger.log_artifact(early_stopping.save_path)
         logger.close()

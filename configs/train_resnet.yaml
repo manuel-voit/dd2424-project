@@ -18,3 +18,23 @@ data:
   imbalance:
     enabled: true
     imbalance_factor: 0.2
+optimizer:
+  name: "adamw"
+  lr: 0.001
+  weight_decay: 0.0
+scheduler:
+  name: "none"
+loss:
+  name: "cross_entropy"
+early_stopping:
+  enabled: true
+  patience: 3
+  min_delta: 0.0
+logging:
+  enabled: true
+  experiment_name: "Transfer_Learning"
+  dagshub_repo_owner: "manuel.voit"
+  dagshub_repo_name: "dd2424-project"
+  log_metrics: true
+  log_confusion_matrix: true
+  log_artifact: true

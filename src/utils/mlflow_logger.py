@@ -7,15 +7,16 @@ import seaborn as sns
 
 
 class MLflowLogger:
-    def __init__(self, config: dict, experiment_name: str = "Transfer_Learning"):
+    def __init__(self, config: dict, experiment_name: str | None = None):
+        logging_cfg = config.get('logging', {})
         dagshub.init(
-            repo_owner="manuel.voit",  
-            repo_name="dd2424-project", 
+            repo_owner=logging_cfg.get('dagshub_repo_owner', "manuel.voit"),  
+            repo_name=logging_cfg.get('dagshub_repo_name', "dd2424-project"), 
             mlflow=True
         )
         
         # Group runs under one main experiment dashboard
-        mlflow.set_experiment(experiment_name)
+        mlflow.set_experiment(experiment_name or logging_cfg.get('experiment_name', "Transfer_Learning"))
         
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
@@ -35,12 +36,24 @@ class MLflowLogger:
         self._log_hparams(config)
 
     def _log_hparams(self, config: dict):
+        optimizer_cfg = config.get('optimizer', {})
+        scheduler_cfg = config.get('scheduler', {})
+        loss_cfg = config.get('loss', {})
+        early_cfg = config.get('early_stopping', {})
+
         params = {
             'model': config['model']['name'],
             'batch_size': config['training']['batch_size'],
-            'lr': config['training']['learning_rate'],
+            'lr': optimizer_cfg.get('lr', config['training'].get('learning_rate')),
             'epochs': config['training']['epochs']
         }
+
+        params['optimizer'] = optimizer_cfg.get('name', 'adamw')
+        params['optimizer_lr'] = optimizer_cfg.get('lr', config['training'].get('learning_rate'))
+        params['optimizer_lora_lr'] = optimizer_cfg.get('lora_lr', params['optimizer_lr'])
+        params['scheduler'] = scheduler_cfg.get('name', 'none')
+        params['loss'] = loss_cfg.get('name', 'cross_entropy')
+        params['early_stopping'] = early_cfg.get('enabled', True)
         
         if 'lora' in config and config['lora']:
             params['lora_r'] = config['lora'].get('r', 0)
