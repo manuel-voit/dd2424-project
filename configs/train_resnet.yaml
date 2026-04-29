@@ -12,3 +12,9 @@ data:
   data_dir: "./data"
   image_size: 224
   num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+  imbalance:
+    enabled: true
+    imbalance_factor: 0.2

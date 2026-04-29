@@ -19,14 +19,16 @@ def get_pet_dataloaders(
     persistent_workers=True,
     prefetch_factor=4,
     binary=False,
-    imbalanced=False
+    imbalanced=False,
+    imbalance_factor=0.2
 ):
     """   
     Args:
         data_dir (str): Directory where the dataset will be stored
         batch_size: Number of images per batch
         num_workers: Number of CPU for data loading
-        imbalanced: Whether to create an imbalanced version of the dataset (e.g. 20% of the training images for each cat breed)
+        imbalanced: Whether to create an imbalanced version of the dataset
+        imbalance_factor: Fraction in (0, 1] that controls the downsampling strength (e.g. 0.2 means keeping 20% of the cats and all dogs)
         
     Returnns:
         dict: dictionary containing the train and test loaders for both tasks.
@@ -68,19 +70,31 @@ def get_pet_dataloaders(
 
     # Apply imbalance to training set
     if imbalanced:
+        if not 0 < imbalance_factor <= 1:
+            raise ValueError(
+                f"imbalance_factor must be in the range (0, 1], got {imbalance_factor}"
+            )
+
         # Find idx of cats (0) and dogs (1) in the training set
         cat_indices = [i for i in train_indices if binary_train_trans._bin_labels[i] == 0]
         dog_indices = [i for i in train_indices if binary_train_trans._bin_labels[i] == 1]
 
-        # Downsample cats to 20%, stratifying by breed (even reduction)
+        # Downsample cats, stratifying by breed (even reduction)
         cat_breeds = [multi_train_trans._labels[i] for i in cat_indices]
         reduced_cat_indices, _ = train_test_split(
-            cat_indices, train_size=0.2, random_state=seed, stratify=cat_breeds
+            cat_indices,
+            train_size=imbalance_factor,
+            random_state=seed,
+            stratify=cat_breeds
         )
 
         # Recombine indices
         train_indices = reduced_cat_indices + dog_indices
-        print(f"Dataset Imbalanced. Kept {len(reduced_cat_indices)} cats and {len(dog_indices)} dogs.")
+        print(
+            "Dataset imbalanced. "
+            f"Kept {len(reduced_cat_indices)} cats ({imbalance_factor:.0%} of cats) "
+            f"and {len(dog_indices)} dogs."
+        )
 
     # Create Subsets
     binary_train = Subset(binary_train_trans, train_indices)

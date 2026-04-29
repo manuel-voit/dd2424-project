@@ -54,7 +54,7 @@ class MLflowLogger:
 
     # Plot confusion matrix and upload it to MLflow
     def log_confusion_matrix(self, cm, step, filename="confusion_matrix.png"):
-        plt.figure(figsize=(12, 10))
+        fig = plt.figure(figsize=(12, 10))
         
         # Heatmap
         sns.heatmap(cm, annot=False, cmap='Blues', fmt='g')
@@ -62,8 +62,7 @@ class MLflowLogger:
         plt.ylabel('True Breed')
         plt.title('Test Confusion Matrix')
         
-        plt.savefig(filename)
-        mlflow.log_artifact(filename, artifact_path="plots")
+        mlflow.log_figure(fig, artifact_file=filename)
         plt.close()
 
     def log_scalars(self, value_dict: dict, step: int):
