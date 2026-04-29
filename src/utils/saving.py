@@ -6,9 +6,9 @@ import torch.nn as nn
 def save_trainable_parameters(model: nn.Module, config: dict, save_path: str):
     # Create an empty dictionary for the weights
     trainable_state_dict = {}
-    for name, param in model.named_parameters():        
-        if param.requires_grad == True:            
-            trainable_state_dict[name] = param
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            trainable_state_dict[name] = param.detach().cpu().clone()
     
     # Package weights with config
     checkpoint = {
@@ -16,7 +16,9 @@ def save_trainable_parameters(model: nn.Module, config: dict, save_path: str):
         'model_state_dict': trainable_state_dict
     }
     
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    save_dir = os.path.dirname(save_path)
+    if save_dir:
+        os.makedirs(save_dir, exist_ok=True)
     torch.save(checkpoint, save_path)
     print(f"Saved checkpoint with weights and config to {save_path}")
 

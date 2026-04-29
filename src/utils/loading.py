@@ -33,8 +33,26 @@ def load_model_from_checkpoint(checkpoint_path: str, device: torch.device):
         )
 
     # Load the weights
-    # strict=False ignores the frozen base layers
-    model.load_state_dict(weights, strict=False)
+    # strict=False allows checkpoints that only store trainable parameters
+    missing_keys, unexpected_keys = model.load_state_dict(weights, strict=False)
+
+    trainable_keys = set()
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            trainable_keys.add(name)
+
+    missing_trainable = sorted(set(missing_keys) & trainable_keys)
+
+    if missing_trainable:
+        print(f"Warning: missing trainable keys when loading checkpoint: {missing_trainable}")
+    elif missing_keys:
+        print(
+            "Checkpoint loaded with partial weights as expected: "
+            f"{len(missing_keys)} frozen/base parameter(s) were not present in the checkpoint."
+        )
+
+    if unexpected_keys:
+        print(f"Warning: unexpected keys when loading checkpoint: {unexpected_keys}")
     
     # Finalize the model for inference
     model = model.to(device)
