@@ -17,6 +17,7 @@ from src.engine import train_one_epoch, evaluate
 from src.utils.seed import set_seed
 from src.utils.saving import EarlyStopping
 from src.utils.mlflow_logger import MLflowLogger
+from src.utils.loading import load_model_from_checkpoint
 
 
 def main():
@@ -113,7 +114,10 @@ def main():
         # Log to MLflow using a single dictionary call
         logger.log_scalars({**train_log, **val_log}, step=epoch)
 
-    # Test valuation
+    # Test evaluation should use the best checkpoint
+    model, _ = load_model_from_checkpoint(early_stopping.save_path, device)
+
+    # Test evaluation
     print("\nRunning test evaluation ...")
     test_metrics = evaluate(model, test_loader, criterion, device)
     print(f"Final Test Acc: {test_metrics['accuracy']*100:.2f}% | Final Test F1: {test_metrics['f1_macro']:.4f}")
