@@ -1,5 +1,5 @@
 import torch
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix
 
 class MetricTracker:
     def __init__(self):
@@ -34,13 +34,21 @@ class MetricTracker:
 
         metrics = {
             "accuracy": accuracy_score(labels, preds),
-            "f1_macro": f1_score(labels, preds, average='macro', zero_division=0)
+            "f1_macro": f1_score(labels, preds, average='macro', zero_division=0),
+            "precision_macro": precision_score(labels, preds, average='macro', zero_division=0),
+            "recall_macro": recall_score(labels, preds, average='macro', zero_division=0),
+            "confusion_matrix": confusion_matrix(labels, preds)
         }
 
-        # Add per-class F1 scores
+        # Calculate per class metrics
         per_class_f1 = f1_score(labels, preds, average=None, zero_division=0)
-        for class_idx, score in enumerate(per_class_f1):
-            metrics[f"f1_class_{class_idx}"] = float(score)
+        per_class_prec = precision_score(labels, preds, average=None, zero_division=0)
+        per_class_rec = recall_score(labels, preds, average=None, zero_division=0)
+
+        for class_idx in range(len(per_class_f1)):
+            metrics[f"f1_class_{class_idx}"] = float(per_class_f1[class_idx])
+            metrics[f"precision_class_{class_idx}"] = float(per_class_prec[class_idx])
+            metrics[f"recall_class_{class_idx}"] = float(per_class_rec[class_idx])
 
         if self.total_samples > 0:
             metrics["loss"] = self.running_loss / self.total_samples

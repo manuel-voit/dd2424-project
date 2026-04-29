@@ -142,6 +142,10 @@ def main():
         print(f"Train Loss: {train_metrics['loss']:.4f} | Train Acc: {train_metrics['accuracy']*100:.2f}% | Train F1: {train_metrics['f1_macro']:.4f}")
         print(f"Val Loss: {val_metrics['loss']:.4f} | Val Acc: {val_metrics['accuracy']*100:.2f}% | Val F1:   {val_metrics['f1_macro']:.4f}")
 
+        # Remove confusion matrices from logs to avoid crashing the logger
+        train_metrics.pop("confusion_matrix", None)
+        val_metrics.pop("confusion_matrix", None)
+
         train_log = {f"train_{k}": v for k, v in train_metrics.items()}
         val_log = {f"val_{k}": v for k, v in val_metrics.items()}
 
@@ -155,11 +159,13 @@ def main():
     # Test evaluation
     print("\nRunning test evaluation ...")
     test_metrics = evaluate(model, test_loader, criterion, device)
+    cm = test_metrics.pop("confusion_matrix")
     print(f"Final Test Acc: {test_metrics['accuracy']*100:.2f}% | Final Test F1: {test_metrics['f1_macro']:.4f}")
     
     test_log = {f"test_{k}": v for k, v in test_metrics.items()}
     if logger is not None:
         logger.log_scalars(test_log, step=EPOCHS)
+        logger.log_confusion_matrix(cm, step=EPOCHS)
 
     if logger is not None:
         # Save the best model checkpoint straight into MLflow!

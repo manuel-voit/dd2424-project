@@ -2,6 +2,8 @@ import os
 from datetime import datetime
 import mlflow
 import dagshub
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class MLflowLogger:
@@ -49,6 +51,20 @@ class MLflowLogger:
         
         # Save a copy of the YAML dictionary as a text artifact
         mlflow.log_dict(config, "config.yaml")
+
+    # Plot confusion matrix and upload it to MLflow
+    def log_confusion_matrix(self, cm, step, filename="confusion_matrix.png"):
+        plt.figure(figsize=(12, 10))
+        
+        # Heatmap
+        sns.heatmap(cm, annot=False, cmap='Blues', fmt='g')
+        plt.xlabel('Predicted Breed')
+        plt.ylabel('True Breed')
+        plt.title('Test Confusion Matrix')
+        
+        plt.savefig(filename)
+        mlflow.log_artifact(filename, artifact_path="plots")
+        plt.close()
 
     def log_scalars(self, value_dict: dict, step: int):
         mlflow.log_metrics(value_dict, step=step)

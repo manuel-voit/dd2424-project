@@ -24,6 +24,7 @@ data/*
 logs/
 runs/
 tensorboard/
+confusion_matrix.png
 
 # Checkpoints
 checkpoints/
