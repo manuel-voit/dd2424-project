@@ -9,6 +9,8 @@ tqdm>=4.65.0
 pyyaml>=6.0        
 # For stratified Train/Val splits 
 scikit-learn>=1.2.0
+# For test execution
+pytest>=8.0.0
 
 # Analysis
 # For visualizing training curves

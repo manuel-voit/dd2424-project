@@ -47,6 +47,7 @@ def main():
     BATCH_SIZE = config['training']['batch_size']
     EPOCHS = config['training']['epochs']
     LEARNING_RATE = config['training']['learning_rate']
+    LORA_LEARNING_RATE = config.get('lora', {}).get('learning_rate', LEARNING_RATE)
 
     # Initialize tracking components
     current_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -82,8 +83,18 @@ def main():
 
     model = model.to(device)
 
-    # Filter parameters for the Optimizer
-    trainable_params = [p for p in model.parameters() if p.requires_grad]
+    # Split trainable parameters so LoRA adapters can use their own learning rate
+    lora_params = []
+    non_lora_trainable_params = []
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+        if ".lora_" in name:
+            lora_params.append(param)
+        else:
+            non_lora_trainable_params.append(param)
+
+    trainable_params = lora_params + non_lora_trainable_params
     
     # Print a quick sanity check to ensure parameter efficiency
     total_params = sum(p.numel() for p in model.parameters())
@@ -91,7 +102,23 @@ def main():
     print(f"Total Parameters: {total_params:,}")
     print(f"Trainable Parameters: {trained_params:,} ({100 * trained_params / total_params:.2f}%)")
 
-    optimizer = optim.AdamW(trainable_params, lr=LEARNING_RATE)
+    optimizer_param_groups = []
+    if non_lora_trainable_params:
+        optimizer_param_groups.append({
+            'params': non_lora_trainable_params,
+            'lr': LEARNING_RATE
+        })
+    if lora_params:
+        optimizer_param_groups.append({
+            'params': lora_params,
+            'lr': LORA_LEARNING_RATE
+        })
+
+    print(f"Head/Base trainable LR: {LEARNING_RATE}")
+    if lora_params:
+        print(f"LoRA trainable LR: {LORA_LEARNING_RATE}")
+
+    optimizer = optim.AdamW(optimizer_param_groups)
     criterion = nn.CrossEntropyLoss()
 
     # Training Loop
