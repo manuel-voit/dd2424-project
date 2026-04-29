@@ -23,6 +23,7 @@ from src.utils.loading import load_model_from_checkpoint
 def main():
     parser = argparse.ArgumentParser(description="Train CNN/ViT networks")
     parser.add_argument('--config', type=str, required=True, help="Path to config yaml")
+    parser.add_argument('--disable-mlflow', action='store_true', help="Disable MLflow logging for this run")
     args = parser.parse_args()
 
     with open(args.config, 'r') as file:
@@ -57,7 +58,11 @@ def main():
         save_path=f"checkpoints/{MODEL_TYPE}_lr{LEARNING_RATE}_bs{BATCH_SIZE}_{current_time}.pth", 
     )
     
-    logger = MLflowLogger(config=config, experiment_name="Transfer_Learning")
+    logger = None
+    if args.disable_mlflow:
+        print("MLflow logging disabled.")
+    else:
+        logger = MLflowLogger(config=config, experiment_name="Transfer_Learning")
 
     # Data loading
     loaders = get_dataloaders(config=config)
@@ -140,8 +145,9 @@ def main():
         train_log = {f"train_{k}": v for k, v in train_metrics.items()}
         val_log = {f"val_{k}": v for k, v in val_metrics.items()}
 
-        # Log to MLflow using a single dictionary call
-        logger.log_scalars({**train_log, **val_log}, step=epoch)
+        if logger is not None:
+            # Log to MLflow using a single dictionary call
+            logger.log_scalars({**train_log, **val_log}, step=epoch)
 
     # Test evaluation should use the best checkpoint
     model, _ = load_model_from_checkpoint(early_stopping.save_path, device)
@@ -152,11 +158,13 @@ def main():
     print(f"Final Test Acc: {test_metrics['accuracy']*100:.2f}% | Final Test F1: {test_metrics['f1_macro']:.4f}")
     
     test_log = {f"test_{k}": v for k, v in test_metrics.items()}
-    logger.log_scalars(test_log, step=EPOCHS)
+    if logger is not None:
+        logger.log_scalars(test_log, step=EPOCHS)
 
-    # Save the best model checkpoint straight into MLflow!
-    logger.log_artifact(early_stopping.save_path)
-    logger.close()
+    if logger is not None:
+        # Save the best model checkpoint straight into MLflow!
+        logger.log_artifact(early_stopping.save_path)
+        logger.close()
 
 
 if __name__ == "__main__":
