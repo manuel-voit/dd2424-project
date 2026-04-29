@@ -1,0 +1,31 @@
+model:
+  type: "vit"
+  name: "swin_t"
+  num_classes: 37
+lora:
+  r: 8
+  alpha: 16
+  # Targets attention Query/Key/Value projections only in stage 3/4
+  targets:
+    # Stage 3 (Contains 6 Swin blocks)
+    - "features.5.0.attn.qkv"
+    - "features.5.1.attn.qkv"
+    - "features.5.2.attn.qkv"
+    - "features.5.3.attn.qkv"
+    - "features.5.4.attn.qkv"
+    - "features.5.5.attn.qkv"
+    
+    # Stage 4 (Contains 2 Swin blocks)
+    - "features.7.0.attn.qkv"
+    - "features.7.1.attn.qkv"
+training:
+  batch_size: 32
+  epochs: 10
+  # ViTs usually require a smaller learning rate
+  learning_rate: 0.0005
+  seed: 42
+data:
+  name: "oxford_pets"
+  data_dir: "./data"
+  image_size: 224
+  num_workers: 4

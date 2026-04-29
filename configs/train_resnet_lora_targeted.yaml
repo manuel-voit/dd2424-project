@@ -1,0 +1,31 @@
+model:
+  type: "resnet"
+  name: "resnet50"
+  num_classes: 37
+lora:
+  r: 8
+  alpha: 16
+  # Targets only 3x3 convolutions in layer 3/4
+  targets:
+    # All 6 blocks in layer 3
+    - "layer3.0.conv2"
+    - "layer3.1.conv2"
+    - "layer3.2.conv2"
+    - "layer3.3.conv2"
+    - "layer3.4.conv2"
+    - "layer3.5.conv2"
+    
+    # All 3 blocks in layer 4
+    - "layer4.0.conv2"
+    - "layer4.1.conv2"
+    - "layer4.2.conv2"
+training:
+  batch_size: 32
+  epochs: 10
+  learning_rate: 0.001
+  seed: 42
+data:
+  name: "oxford_pets"
+  data_dir: "./data"
+  image_size: 224
+  num_workers: 4
