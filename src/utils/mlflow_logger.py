@@ -43,6 +43,7 @@ class MLflowLogger:
         if 'lora' in config and config['lora']:
             params['lora_r'] = config['lora'].get('r', 0)
             params['lora_alpha'] = config['lora'].get('alpha', 0)
+            params['lora_lr'] = config['lora'].get('learning_rate', config['training']['learning_rate'])
             
         mlflow.log_params(params)
         

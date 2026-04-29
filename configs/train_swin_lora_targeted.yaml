@@ -5,6 +5,7 @@ model:
 lora:
   r: 8
   alpha: 16
+  learning_rate: 0.0001
   # Targets attention Query/Key/Value projections only in stage 3/4
   targets:
     # Stage 3 (Contains 6 Swin blocks)
