@@ -6,6 +6,16 @@ import dagshub
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# Recursively flatten nested dictionary
+def flatten_dict(d: dict, parent_key: str = '', sep: str = '.') -> dict:
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 class MLflowLogger:
     def __init__(self, config: dict, experiment_name: Optional[str] = None):
@@ -37,31 +47,9 @@ class MLflowLogger:
         self._log_hparams(config)
 
     def _log_hparams(self, config: dict):
-        optimizer_cfg = config.get('optimizer', {})
-        scheduler_cfg = config.get('scheduler', {})
-        loss_cfg = config.get('loss', {})
-        early_cfg = config.get('early_stopping', {})
+        flat_params = flatten_dict(config)
 
-        params = {
-            'model': config['model']['name'],
-            'batch_size': config['training']['batch_size'],
-            'lr': optimizer_cfg.get('lr', config['training'].get('learning_rate')),
-            'epochs': config['training']['epochs']
-        }
-
-        params['optimizer'] = optimizer_cfg.get('name', 'adamw')
-        params['optimizer_lr'] = optimizer_cfg.get('lr', config['training'].get('learning_rate'))
-        params['optimizer_lora_lr'] = optimizer_cfg.get('lora_lr', params['optimizer_lr'])
-        params['scheduler'] = scheduler_cfg.get('name', 'none')
-        params['loss'] = loss_cfg.get('name', 'cross_entropy')
-        params['early_stopping'] = early_cfg.get('enabled', True)
-        
-        if 'lora' in config and config['lora']:
-            params['lora_r'] = config['lora'].get('r', 0)
-            params['lora_alpha'] = config['lora'].get('alpha', 0)
-            params['lora_lr'] = config['lora'].get('learning_rate', config['training']['learning_rate'])
-            
-        mlflow.log_params(params)
+        mlflow.log_params(flat_params)
         
         # Save a copy of the YAML dictionary as a text artifact
         mlflow.log_dict(config, "config.yaml")
