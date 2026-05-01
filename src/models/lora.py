@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import math
 
 
@@ -41,7 +40,9 @@ class LoRALinear(nn.Module):
         nn.init.zeros_(self.lora_B.weight)
 
     def forward(self, x):
-        return F.linear(x, self.weight, self.bias)
+        original_output = self.original_layer(x)
+        lora_output = self.lora_B(self.lora_A(x)) * self.scaling
+        return original_output + lora_output
 
 
 class LoRAConv2d(nn.Module):
@@ -98,16 +99,9 @@ class LoRAConv2d(nn.Module):
         nn.init.zeros_(self.lora_B.weight)
 
     def forward(self, x):
-        return F.conv2d(
-            x,
-            self.weight,
-            self.bias,
-            stride=self.original_layer.stride,
-            padding=self.original_layer.padding,
-            dilation=self.original_layer.dilation,
-            groups=self.original_layer.groups
-        )
-
+        original_output = self.original_layer(x)
+        lora_output = self.lora_B(self.lora_A(x)) * self.scaling
+        return original_output + lora_output
 
 def _inject_lora_recursive(module: nn.Module, target_layer_names: list, r: int, alpha: int, prefix: str = ""):
     replaced_layers = []
