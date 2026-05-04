@@ -2,8 +2,10 @@ import os
 import torch
 from torchvision import datasets
 from torch.utils.data import DataLoader
-from torch.utils.data import Subset
+from torch.utils.data import Subset, WeightedRandomSampler
 from sklearn.model_selection import train_test_split
+import numpy as np
+from sklearn.utils.class_weight import compute_sample_weight
 
 from src.data.transforms import get_train_transforms, get_val_test_transforms
 
@@ -22,7 +24,8 @@ def get_pet_dataloaders(
     imbalanced=False,
     imbalance_factor=0.2,
     augmentation=True,
-    train_fraction=1.0
+    train_fraction=1.0,
+    oversample=False
 ):
     """   
     Args:
@@ -139,14 +142,46 @@ def get_pet_dataloaders(
 
     # Dataloaders
     if binary:
+        train_sampler = None
+        if oversample:
+            targets = [binary_train_trans._bin_labels[i] for i in train_indices]
+            sample_weights = compute_sample_weight('balanced', y=targets)
+            train_sampler = WeightedRandomSampler(
+                weights=sample_weights, 
+                num_samples=len(sample_weights), 
+                replacement=True
+            )
+            
+        kwargs_train = loader_kwargs.copy()
+        if train_sampler is not None:
+            kwargs_train['sampler'] = train_sampler
+        else:
+            kwargs_train['shuffle'] = True
+
         loaders = {
-            'train': DataLoader(binary_train, shuffle=True, **loader_kwargs),
+            'train': DataLoader(binary_train, **kwargs_train),
             'val': DataLoader(binary_val, shuffle=False, **loader_kwargs),
             'test': DataLoader(binary_test, shuffle=False, **loader_kwargs),
         }
     else:    
+        train_sampler = None
+        if oversample:
+            targets = [multi_train_trans._labels[i] for i in train_indices]
+            sample_weights = compute_sample_weight('balanced', y=targets)
+            train_sampler = WeightedRandomSampler(
+                weights=sample_weights, 
+                num_samples=len(sample_weights), 
+                replacement=True
+            )
+
+        kwargs_train = loader_kwargs.copy()
+        if train_sampler is not None:
+            kwargs_train['sampler'] = train_sampler
+        else:
+            kwargs_train['shuffle'] = True
+
         loaders = {
-                'train': DataLoader(multi_train, shuffle=True, **loader_kwargs),
+                'train': DataLoader(multi_train, **kwargs_train),
                 'val': DataLoader(multi_val, shuffle=False, **loader_kwargs),
                 'test': DataLoader(multi_test, shuffle=False, **loader_kwargs),
         }
