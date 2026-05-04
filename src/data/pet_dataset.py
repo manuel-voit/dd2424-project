@@ -21,7 +21,8 @@ def get_pet_dataloaders(
     binary=False,
     imbalanced=False,
     imbalance_factor=0.2,
-    augmentation=True
+    augmentation=True,
+    train_fraction=1.0
 ):
     """   
     Args:
@@ -30,6 +31,7 @@ def get_pet_dataloaders(
         num_workers: Number of CPU for data loading
         imbalanced: Whether to create an imbalanced version of the dataset
         imbalance_factor: Fraction in (0, 1] that controls the downsampling strength (e.g. 0.2 means keeping 20% of the cats and all dogs)
+        train_fraction: Fraction in (0, 1] that controls the amount of training data used
         augmentation: Whether to apply data augmentation to the training set
         
     Returnns:
@@ -67,9 +69,16 @@ def get_pet_dataloaders(
     dataset_size = len(multi_train_trans)
     indices = list(range(dataset_size))
     
+    # Calculate train and val sizes based on train_fraction
+    # Default is 80% train, 20% val
+    # WE change this ratio (and reduce train size) with train_fraction < 1.0
+    # Rest goes to val
+    train_size = int(dataset_size * 0.8 * train_fraction)
+    val_size = dataset_size - train_size
+    
     train_indices, val_indices = train_test_split(
         indices,
-        test_size=0.2,
+        test_size=val_size,
         random_state=seed,
         stratify=multi_train_trans._labels,
     )

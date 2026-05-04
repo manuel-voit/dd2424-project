@@ -11,6 +11,7 @@ data:
   name: "oxford_pets"
   data_dir: "./data"
   image_size: 224
+  train_fraction: 1.0
   augmentation: true
   num_workers: 4
   pin_memory: true

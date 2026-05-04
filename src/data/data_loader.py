@@ -23,7 +23,8 @@ def get_dataloaders(config: dict):
             binary=is_binary,
             imbalanced=imbalance_cfg.get('enabled', data_cfg.get('imbalanced', False)),
             imbalance_factor=imbalance_cfg.get('imbalance_factor', 0.2),
-            augmentation=data_cfg.get('augmentation', True)
+            augmentation=data_cfg.get('augmentation', True),
+            train_fraction=data_cfg.get('train_fraction', 1.0)
         )
         
     elif dataset_name == "coco":
