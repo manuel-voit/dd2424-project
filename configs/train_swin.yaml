@@ -2,6 +2,10 @@ model:
   type: "vit"
   name: "swin_t" # Options: swin_t, swin_s, swin_b, swin_v2_t
   num_classes: 37
+  fine_tuning:
+    strategy: "simultaneous"     # "none" (frozen), "simultaneous" (update all), "gradual"
+    num_layers: 5                # Layers to unfreeze
+    unfreeze_every_n_epochs: 3   # only for gradual
 training:
   batch_size: 32
   epochs: 10
