@@ -20,6 +20,8 @@ from src.utils.training_setup import (
     build_loss,
     build_optimizer,
     build_scheduler,
+    apply_finetuning_strategy,
+    update_optimizer
 )
 
 
@@ -92,6 +94,10 @@ def main():
         )
 
     model = model.to(device)
+    
+    # Initial setup for fine-tuning before optimizer is built
+    apply_finetuning_strategy(model, config, current_epoch=0)
+    
     optimizer = build_optimizer(model, config)
     criterion = build_loss(config)
     scheduler, scheduler_needs_metric = build_scheduler(optimizer, config)
@@ -128,6 +134,11 @@ def main():
     # Training Loop
     for epoch in range(EPOCHS):
         print(f"\nEpoch {epoch+1}/{EPOCHS}")
+        
+        # Unfreeze layers if ft strat is gradual (no effect if simultaneous)
+        unfroze_new = apply_finetuning_strategy(model, config, current_epoch=epoch)
+        if unfroze_new:
+            optimizer = update_optimizer(optimizer, model, config)
         
         train_metrics = train_one_epoch(model, train_loader, criterion, optimizer, device)
         val_metrics = evaluate(model, val_loader, criterion, device)

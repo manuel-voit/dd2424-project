@@ -2,6 +2,10 @@ model:
   type: "resnet"
   name: "resnet50" # Options: resnet18, resnet34, resnet50, resnet101
   num_classes: 2
+  fine_tuning:
+    strategy: "simultaneous"     # "none" (frozen), "simultaneous" (update all), "gradual"
+    num_layers: 2                # Layers to unfreeze
+    unfreeze_every_n_epochs: 3   # only for gradual
 training:
   batch_size: 32
   epochs: 10

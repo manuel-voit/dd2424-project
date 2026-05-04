@@ -122,3 +122,75 @@ def build_early_stopping(config: dict, save_path: str):
         min_delta=early_cfg.get('min_delta', 0.0),
         save_path=save_path,
     )
+
+def apply_finetuning_strategy(model: nn.Module, config: dict, current_epoch: int = 0):
+    ft_config = config.get('model', {}).get('fine_tuning', {})
+    strategy = ft_config.get('strategy', 'none').lower()
+    
+    if strategy == 'none':
+        return False
+        
+    num_layers = ft_config.get('num_layers', 1)
+    model_type = config.get('model', {}).get('type', 'resnet').lower()
+    
+    # Organize the top-level feature extraction blocks chronologically backwards
+    blocks = []
+    if model_type == 'resnet':
+        if hasattr(model, 'fc'): blocks.append(model.fc)
+        if hasattr(model, 'layer4'): blocks.append(model.layer4)
+        if hasattr(model, 'layer3'): blocks.append(model.layer3)
+        if hasattr(model, 'layer2'): blocks.append(model.layer2)
+        if hasattr(model, 'layer1'): blocks.append(model.layer1)
+    elif model_type == 'vit':
+        if hasattr(model, 'head'): blocks.append(model.head)
+        if hasattr(model, 'layers'):
+            for layer in reversed(model.layers):
+                blocks.append(layer)
+        else:
+            blocks = list(model.children())[::-1]
+    else:
+        blocks = list(model.children())[::-1]
+        
+    unfroze_anything = False
+    
+    # Calculate how many layers deep to unfreeze
+    if strategy == 'simultaneous':
+        blocks_to_unfreeze = min(num_layers, len(blocks))
+    elif strategy == 'gradual':
+        unfreeze_interval = ft_config.get('unfreeze_every_n_epochs', 3)
+        blocks_to_unfreeze = 1 + (current_epoch // unfreeze_interval)
+        blocks_to_unfreeze = min(blocks_to_unfreeze, num_layers, len(blocks))
+    else:
+        return unfroze_anything
+
+    # Apply requires_grad to our chosen blocks
+    for block in blocks[:blocks_to_unfreeze]:
+        for name, param in block.named_parameters():
+            # Leave LoRA components alone (handled independently)
+            if ".lora_" in name:
+                continue
+            if not param.requires_grad:
+                param.requires_grad = True
+                unfroze_anything = True
+                
+    return unfroze_anything
+
+def update_optimizer(optimizer: optim.Optimizer, model: nn.Module, config: dict):
+    # Retrieve all existing parameters inside the optimizer
+    existing_params = {p for group in optimizer.param_groups for p in group['params']}
+            
+    base_lr = config.get('optimizer', {}).get('lr', config.get('training', {}).get('learning_rate', 1e-3))
+    new_non_lora = []
+    
+    # Find any newly unwrapped params that are not managed by optimizer
+    for name, param in model.named_parameters():
+        if param.requires_grad and param not in existing_params:
+            if ".lora_" not in name:
+                new_non_lora.append(param)
+                
+    # Add them as a brand new parameter group
+    if new_non_lora:
+        optimizer.add_param_group({'params': new_non_lora, 'lr': base_lr})
+        print(f"Update: Dynamically added {len(new_non_lora)} un-frozen parameter tensors to the optimizer!")
+    
+    return optimizer
