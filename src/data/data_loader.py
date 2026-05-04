@@ -33,13 +33,20 @@ def get_dataloaders(config: dict):
         is_binary = True if dataset_name == "coco_binary" else False
         
         return get_coco_dataloaders(
+            #imbalanced=config['data'].get('imbalanced', False)
             data_dir=config['data']['data_dir'],
             image_size=config['data']['image_size'],
             batch_size=config['training']['batch_size'],
             num_workers=config['data']['num_workers'],
             seed=config['training'].get('seed', 42),
+            pin_memory=data_cfg.get('pin_memory', True),
+            persistent_workers=data_cfg.get('persistent_workers', True),
+            prefetch_factor=data_cfg.get('prefetch_factor', 4),
             binary=is_binary,
-            imbalanced=config['data'].get('imbalanced', False)
+            imbalanced=imbalance_cfg.get('enabled', data_cfg.get('imbalanced', False)),
+            imbalance_factor=imbalance_cfg.get('imbalance_factor', 0.2),
+            augmentation=data_cfg.get('augmentation', True),
+            train_fraction=data_cfg.get('train_fraction', 1.0)
         )
         
     else:

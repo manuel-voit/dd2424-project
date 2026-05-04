@@ -2,10 +2,20 @@ import os
 import torch
 from torchvision import datasets
 from torch.utils.data import DataLoader, Subset
+import numpy as np
 from sklearn.model_selection import train_test_split
-
-# Assuming you have these in your project
+from skmultilearn.model_selection import IterativeStratification
 from src.data.transforms import get_train_transforms, get_val_test_transforms
+
+# Mapping of 90 ids to 80 actual classes (0-79)
+VALID_COCO_IDS = [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+    22, 23, 24, 25, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42,
+    43, 44, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
+    62, 63, 64, 65, 67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84,
+    85, 86, 87, 88, 89, 90
+]
+COCO_ID_TO_INDEX = {coco_id: index for index, coco_id in enumerate(VALID_COCO_IDS)}
 
 # --- Custom Target Transforms for MS COCO ---
 
@@ -14,18 +24,36 @@ class CocoBinaryTargetTransform:
     def __call__(self, target):
         for ann in target:
             if ann['category_id'] == 1:
-                return torch.tensor(1, dtype=torch.long)
-        return torch.tensor(0, dtype=torch.long)
+                return torch.tensor(1, dtype=torch.float32) # Better FOR BCE loss
+        return torch.tensor(0, dtype=torch.float32)
 
 class CocoMultiLabelTargetTransform:
     """Converts COCO annotations to a multi-hot 91-dim vector."""
     def __call__(self, target):
-        labels = torch.zeros(91, dtype=torch.float32)
+        labels = torch.zeros(80, dtype=torch.float32)
         for ann in target:
-            labels[ann['category_id']] = 1.0
+            cat_id = ann['category_id']
+            if cat_id in COCO_ID_TO_INDEX:
+                mapped_idx = COCO_ID_TO_INDEX[cat_id]
+                labels[mapped_idx] = 1.0
         return labels
 
-# --- Helper Function ---
+def create_multilabel_stratified_split(dataset, multi_hot_labels, test_size=0.2):
+    if isinstance(multi_hot_labels, torch.Tensor):
+        multi_hot_labels = multi_hot_labels.numpy()
+
+    stratifier = IterativeStratification(
+        n_splits=2, 
+        order=1, 
+        sample_distribution_per_fold=[test_size, 1.0 - test_size]
+    )
+    
+    dummy_X = np.zeros((len(multi_hot_labels), 1))
+    train_indices, val_indices = next(stratifier.split(dummy_X, multi_hot_labels))
+    train_subset = Subset(dataset, train_indices.tolist())
+    val_subset = Subset(dataset, val_indices.tolist())
+    
+    return train_subset, val_subset
 
 def _get_coco_binary_labels(coco_dataset):
     """
@@ -41,7 +69,28 @@ def _get_coco_binary_labels(coco_dataset):
         labels.append(1 if len(ann_ids) > 0 else 0)
     return labels
 
-# --- Main DataLoader Function ---
+def _get_coco_multilabel_labels(coco_dataset):
+    """
+    Extracts multi-label targets quickly using the COCO API without loading images.
+    """
+    coco = coco_dataset.coco
+    img_ids = coco_dataset.ids
+    labels = []
+    
+    for img_id in img_ids:
+        ann_ids = coco.getAnnIds(imgIds=img_id)
+        anns = coco.loadAnns(ann_ids)
+        
+        label = np.zeros(80, dtype=np.float32)
+        for ann in anns:
+            cat_id = ann['category_id']
+            if cat_id in COCO_ID_TO_INDEX:
+                mapped_idx = COCO_ID_TO_INDEX[cat_id]
+                label[mapped_idx] = 1.0
+        labels.append(label)
+        
+    return np.stack(labels)
+
 
 def get_coco_dataloaders(
     data_dir='./data/coco',
@@ -53,7 +102,10 @@ def get_coco_dataloaders(
     persistent_workers=True,
     prefetch_factor=4,
     binary=False,
-    imbalanced=False
+    imbalanced=False,
+    imbalance_factor=0.2,
+    augmentation=True,
+    train_fraction=1.0
 ):
     """   
     Args:
@@ -67,83 +119,82 @@ def get_coco_dataloaders(
     Returns:
         dict: dictionary containing the train, val, and test loaders.
     """
-    # File Paths (Ensure annotations are downloaded and extracted as discussed!)
+    # File Paths Sanity Check
     train_img_dir = os.path.join(data_dir, 'train2017')
     train_ann_file = os.path.join(data_dir, 'annotations', 'instances_train2017.json')
     test_img_dir = os.path.join(data_dir, 'val2017') # Using COCO val2017 as our test set
     test_ann_file = os.path.join(data_dir, 'annotations', 'instances_val2017.json')
+    val_img_dir = os.path.join(data_dir, 'val2017') # Using COCO val2017 as our test set
+    val_ann_file = os.path.join(data_dir, 'annotations', 'instances_val2017.json')
 
-    if not os.path.exists(train_ann_file):
-        raise FileNotFoundError(f"Annotations not found at {train_ann_file}. Please download annotations_trainval2017.zip")
+    paths_to_check = [train_img_dir, train_ann_file, val_img_dir, val_ann_file]
+    for path in paths_to_check:
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Missing COCO data file or directory: {path}")
 
     # Transforms
-    train_transform = get_train_transforms(image_size=image_size)
+    if augmentation:
+        train_transform = get_train_transforms(image_size=image_size)
+    else:
+        train_transform = get_val_test_transforms(image_size=image_size)
     test_transform = get_val_test_transforms(image_size=image_size)
 
-    # 1. Load Base Train Datasets
-    binary_train_trans = datasets.CocoDetection(
+    train_dataset_raw = datasets.CocoDetection(
         root=train_img_dir, annFile=train_ann_file, 
-        transform=train_transform, target_transform=CocoBinaryTargetTransform()
+        transform=train_transform, 
+        target_transform=CocoBinaryTargetTransform() if binary else CocoMultiLabelTargetTransform()
     )
-    binary_val_trans = datasets.CocoDetection(
-        root=train_img_dir, annFile=train_ann_file, # Same source, different transform for Val
-        transform=test_transform, target_transform=CocoBinaryTargetTransform()
-    )
-    multi_train_trans = datasets.CocoDetection(
+    val_dataset_raw = datasets.CocoDetection(
         root=train_img_dir, annFile=train_ann_file, 
-        transform=train_transform, target_transform=CocoMultiLabelTargetTransform()
-    )
-    multi_val_trans = datasets.CocoDetection(
-        root=train_img_dir, annFile=train_ann_file, 
-        transform=test_transform, target_transform=CocoMultiLabelTargetTransform()
+        transform=test_transform, 
+        target_transform=CocoBinaryTargetTransform() if binary else CocoMultiLabelTargetTransform()
     )
 
-    # 2. Extract labels and Split Train/Val (stratify by Person vs No-Person)
-    print("Extracting COCO labels for stratification... (This takes a few seconds)")
-    bin_labels = _get_coco_binary_labels(binary_train_trans)
-    
-    dataset_size = len(binary_train_trans)
-    indices = list(range(dataset_size))
-    
-    train_indices, val_indices = train_test_split(
-        indices,
-        test_size=0.2,
-        random_state=seed,
-        stratify=bin_labels, # Stratify based on Person vs No Person
-    )
-
-    # 3. Apply imbalance to training set (Downsample 'Person' images)
-    if imbalanced:
-        # Separate the train indices based on binary label
-        no_person_indices = [i for i in train_indices if bin_labels[i] == 0]
-        person_indices = [i for i in train_indices if bin_labels[i] == 1]
-
-        # Downsample 'Person' images to 20%
-        reduced_person_indices, _ = train_test_split(
-            person_indices, train_size=0.2, random_state=seed
+    if binary:
+        bin_labels = _get_coco_binary_labels(train_dataset_raw)
+        indices = list(range(len(train_dataset_raw)))
+        
+        train_indices, val_indices = train_test_split(
+            indices, test_size=0.2, random_state=seed, stratify=bin_labels
         )
 
-        # Recombine indices
-        train_indices = no_person_indices + reduced_person_indices
-        print(f"Dataset Imbalanced. Kept {len(no_person_indices)} No-Person and {len(reduced_person_indices)} Person images.")
+        if imbalanced:
+            print("Applying binary imbalance logic...")
+            no_person_indices = [i for i in train_indices if bin_labels[i] == 0]
+            person_indices = [i for i in train_indices if bin_labels[i] == 1]
 
-    # 4. Create Subsets using the split indices
-    binary_train = Subset(binary_train_trans, train_indices)
-    binary_val = Subset(binary_val_trans, val_indices)
-    multi_train = Subset(multi_train_trans, train_indices)
-    multi_val = Subset(multi_val_trans, val_indices)
+            reduced_person_indices, _ = train_test_split(
+                person_indices, train_size=imbalance_factor, random_state=seed
+            )
+            train_indices = no_person_indices + reduced_person_indices
+            print(f"Dataset Imbalanced. Kept {len(no_person_indices)} No-Person and {len(reduced_person_indices)} Person images.")
 
-    # 5. Load Test Datasets (using COCO's val2017 split)
-    binary_test = datasets.CocoDetection(
+        train_subset = Subset(train_dataset_raw, train_indices)
+        val_subset = Subset(val_dataset_raw, val_indices)
+
+    else:
+        if imbalanced:
+            print("Not yet implemented!")
+        
+        # Fast multi-label extraction
+        all_labels_matrix = _get_coco_multilabel_labels(train_dataset_raw)
+
+        train_subset, val_subset = create_multilabel_stratified_split(
+            dataset=train_dataset_raw, 
+            multi_hot_labels=all_labels_matrix, 
+            test_size=0.2 
+        )
+        # Apply the Val transforms to the val_subset
+        val_subset.dataset = val_dataset_raw
+
+    # Load Test Datasets (using COCO's val2017 split)
+    test_dataset = datasets.CocoDetection(
         root=test_img_dir, annFile=test_ann_file, 
-        transform=test_transform, target_transform=CocoBinaryTargetTransform()
-    )
-    multi_test = datasets.CocoDetection(
-        root=test_img_dir, annFile=test_ann_file, 
-        transform=test_transform, target_transform=CocoMultiLabelTargetTransform()
+        transform=test_transform, 
+        target_transform=CocoBinaryTargetTransform() if binary else CocoMultiLabelTargetTransform()
     )
 
-    # 6. Build Dataloaders
+    # Build Dataloaders
     loader_kwargs = {
         'batch_size': batch_size,
         'num_workers': num_workers,
@@ -153,18 +204,11 @@ def get_coco_dataloaders(
         loader_kwargs['persistent_workers'] = persistent_workers
         loader_kwargs['prefetch_factor'] = prefetch_factor
 
-    if binary:
-        loaders = {
-            'train': DataLoader(binary_train, shuffle=True, **loader_kwargs),
-            'val': DataLoader(binary_val, shuffle=False, **loader_kwargs),
-            'test': DataLoader(binary_test, shuffle=False, **loader_kwargs),
-        }
-    else:    
-        loaders = {
-            'train': DataLoader(multi_train, shuffle=True, **loader_kwargs),
-            'val': DataLoader(multi_val, shuffle=False, **loader_kwargs),
-            'test': DataLoader(multi_test, shuffle=False, **loader_kwargs),
-        }
+    loaders = {
+        'train': DataLoader(train_subset, shuffle=True, **loader_kwargs),
+        'val': DataLoader(val_subset, shuffle=False, **loader_kwargs),
+        'test': DataLoader(test_dataset, shuffle=False, **loader_kwargs),
+    }
         
     return loaders
 
