@@ -1,6 +1,6 @@
 model:
   type: "vit"
-  name: "swin_t"
+  name: "swin_t" # Options: swin_t, swin_s, swin_b, swin_v2_t
   num_classes: 37
 lora:
   r: 8

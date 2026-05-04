@@ -1,6 +1,6 @@
 model:
   type: "resnet"
-  name: "resnet50"
+  name: "resnet50" # Options: resnet18, resnet34, resnet50, resnet101
   num_classes: 2
 training:
   batch_size: 32

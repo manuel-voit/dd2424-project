@@ -1,7 +1,7 @@
 import torch
 
 from src.models.cnn_backbone import get_resnet
-from src.models.vit_backbone import get_swin_t
+from src.models.vit_backbone import get_swin
 from src.models.lora import inject_lora
 
 
@@ -16,10 +16,12 @@ def load_model_from_checkpoint(checkpoint_path: str, device: torch.device):
     # Rebuild the base architecture based on the saved config
     model_type = config['model']['type']
     num_classes = config['model']['num_classes']
+    model_name = config['model'].get('name', None)
+    
     if model_type == 'resnet':
-        model = get_resnet(num_classes=num_classes)
+        model = get_resnet(num_classes=num_classes, model_name=model_name or "resnet50")
     elif model_type == 'vit':
-        model = get_swin_t(num_classes=num_classes)
+        model = get_swin(num_classes=num_classes, model_name=model_name or "swin_t")
     else:
         raise ValueError(f"Unknown model type in checkpoint: {model_type}")
 

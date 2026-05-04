@@ -8,7 +8,7 @@ import yaml
 
 from src.models.cnn_backbone import get_resnet
 from src.models.lora import LoRAConv2d, LoRALinear, inject_lora
-from src.models.vit_backbone import get_swin_t
+from src.models.vit_backbone import get_swin
 from src.utils.seed import set_seed
 
 
@@ -18,11 +18,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 def build_model(model_config: dict):
     model_type = model_config["type"]
     num_classes = model_config["num_classes"]
+    model_name = model_config.get("name", None)
 
     if model_type == "resnet":
-        return get_resnet(num_classes=num_classes)
+        return get_resnet(num_classes=num_classes, model_name=model_name or "resnet50")
     if model_type == "vit":
-        return get_swin_t(num_classes=num_classes)
+        return get_swin(num_classes=num_classes, model_name=model_name or "swin_t")
 
     raise ValueError(f"Unsupported model type: {model_type}")
 

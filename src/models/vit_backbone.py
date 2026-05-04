@@ -2,15 +2,23 @@ import torch.nn as nn
 from torchvision import models
 
 
-def get_swin_t(num_classes: int):
+def get_swin(num_classes: int, model_name: str = "swin_t"):
 	"""
-	Loads pre-trained Swin-T, freezes its feature extractor,
+	Loads pre-trained Swin, freezes its feature extractor,
 	and replaces the classification head.
+	Available options: swin_t, swin_s, swin_b, swin_v2_t.
 	"""
 	# Load pretrained model
-	# 'DEFAULT' pulls the recommended ImageNet weights
-	# Roughly 28M params
-	model = models.swin_t(weights=models.Swin_T_Weights.DEFAULT)
+	if model_name == "swin_t":
+		model = models.swin_t(weights=models.Swin_T_Weights.DEFAULT) # ~28.3M params
+	elif model_name == "swin_s":
+		model = models.swin_s(weights=models.Swin_S_Weights.DEFAULT) # ~49.6M params
+	elif model_name == "swin_b":
+		model = models.swin_b(weights=models.Swin_B_Weights.DEFAULT) # ~87.8M params
+	elif model_name == "swin_v2_t":
+		model = models.swin_v2_t(weights=models.Swin_V2_T_Weights.DEFAULT) # ~28.4M params
+	else:
+		raise ValueError(f"Unsupported Swin model: {model_name}")
 
 	# Freeze all backbone parameters
 	for param in model.parameters():
@@ -26,7 +34,7 @@ def get_swin_t(num_classes: int):
 # Testing block
 if __name__ == "__main__":
 	# Instantiate model
-	binary_model = get_swin_t(num_classes=2)
+	binary_model = get_swin(num_classes=2)
 
 	# Sanity check
 	print("\nMODEL SANITY CHECK:\n")
