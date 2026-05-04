@@ -20,7 +20,8 @@ def get_pet_dataloaders(
     prefetch_factor=4,
     binary=False,
     imbalanced=False,
-    imbalance_factor=0.2
+    imbalance_factor=0.2,
+    augmentation=True
 ):
     """   
     Args:
@@ -29,6 +30,7 @@ def get_pet_dataloaders(
         num_workers: Number of CPU for data loading
         imbalanced: Whether to create an imbalanced version of the dataset
         imbalance_factor: Fraction in (0, 1] that controls the downsampling strength (e.g. 0.2 means keeping 20% of the cats and all dogs)
+        augmentation: Whether to apply data augmentation to the training set
         
     Returnns:
         dict: dictionary containing the train and test loaders for both tasks.
@@ -36,7 +38,11 @@ def get_pet_dataloaders(
     # ensure target directory exists
     os.makedirs(data_dir, exist_ok=True)
     
-    train_transform = get_train_transforms(image_size=image_size)
+    if augmentation:
+        train_transform = get_train_transforms(image_size=image_size)
+    else:
+        train_transform = get_val_test_transforms(image_size=image_size)
+        
     test_transform = get_val_test_transforms(image_size=image_size)
 
     # Load Base datasets
