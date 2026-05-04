@@ -48,6 +48,7 @@ def get_dataloaders(config: dict):
             imbalance_factor=imbalance_cfg.get('imbalance_factor', 0.2),
             augmentation=data_cfg.get('augmentation', True),
             train_fraction=data_cfg.get('train_fraction', 1.0)
+            oversample=imbalance_cfg.get('oversample', False)
         )
         
     else:
