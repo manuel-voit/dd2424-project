@@ -2,6 +2,8 @@ import torch
 import argparse
 import yaml
 import datetime
+import numpy as np
+from sklearn.utils.class_weight import compute_class_weight
 
 # Import custom modules
 from src.models.cnn_backbone import get_resnet
@@ -95,11 +97,34 @@ def main():
 
     model = model.to(device)
     
+    # Compute class weights if configured
+    class_weights = None
+    if config.get('data', {}).get('imbalance', {}).get('use_weighted_loss', False):
+        
+        train_dataset = train_loader.dataset
+        # Extract targets for weights (assumes train_dataset is a Subset)
+        if hasattr(train_dataset, 'dataset') and hasattr(train_dataset, 'indices'):
+            base_ds = train_dataset.dataset
+            indices = train_dataset.indices
+            if NUM_CLASSES == 2 and hasattr(base_ds, '_bin_labels'):
+                targets = [base_ds._bin_labels[i] for i in indices]
+            elif hasattr(base_ds, '_labels'):
+                targets = [base_ds._labels[i] for i in indices]
+            else:
+                targets = [train_dataset[i][1] for i in range(len(train_dataset))]
+        else:
+            targets = [train_dataset[i][1] for i in range(len(train_dataset))]
+            
+        targets = np.array(targets)
+        weights = compute_class_weight('balanced', classes=np.unique(targets), y=targets)
+        class_weights = torch.tensor(weights, dtype=torch.float32).to(device)
+        print(f"Computed class weights for loss: {class_weights}")
+
     # Initial setup for fine-tuning before optimizer is built
     apply_finetuning_strategy(model, config, current_epoch=0)
     
     optimizer = build_optimizer(model, config)
-    criterion = build_loss(config)
+    criterion = build_loss(config, class_weights=class_weights)
     scheduler, scheduler_needs_metric = build_scheduler(optimizer, config)
 
     # Split trainable parameters so LoRA adapters can use their own learning rate
