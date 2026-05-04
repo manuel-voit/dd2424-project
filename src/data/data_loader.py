@@ -1,5 +1,6 @@
 from src.data.pet_dataset import get_pet_dataloaders
 from src.data.coco_dataset import get_coco_dataloaders
+from src.data.coco_dataset import get_coco_dataloaders
 
 
 def get_dataloaders(config: dict):
@@ -34,7 +35,6 @@ def get_dataloaders(config: dict):
         is_binary = True if dataset_name == "coco_binary" else False
         
         return get_coco_dataloaders(
-            #imbalanced=config['data'].get('imbalanced', False)
             data_dir=config['data']['data_dir'],
             image_size=config['data']['image_size'],
             batch_size=config['training']['batch_size'],
