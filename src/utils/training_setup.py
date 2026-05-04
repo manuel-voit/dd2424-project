@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.optim as optim
 
@@ -50,7 +51,7 @@ def build_optimizer(model: nn.Module, config: dict):
 
     raise ValueError(f"Unsupported optimizer: {optimizer_name}")
 
-def build_loss(config: dict):
+def build_loss(config: dict, class_weights: torch.Tensor = None):
     loss_cfg = config.get('loss', {})
     loss_name = loss_cfg.get('name', 'cross_entropy').lower()
 
@@ -58,6 +59,8 @@ def build_loss(config: dict):
         kwargs = {}
         if 'label_smoothing' in loss_cfg:
             kwargs['label_smoothing'] = loss_cfg['label_smoothing']
+        if class_weights is not None:
+            kwargs['weight'] = class_weights
         return nn.CrossEntropyLoss(**kwargs)
     elif loss_name == 'bce_with_logits':
         kwargs = {}
