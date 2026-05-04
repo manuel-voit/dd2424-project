@@ -1,4 +1,5 @@
 from src.data.pet_dataset import get_pet_dataloaders
+from src.data.coco_dataset import get_coco_dataloaders
 
 
 def get_dataloaders(config: dict):
@@ -27,8 +28,19 @@ def get_dataloaders(config: dict):
             train_fraction=data_cfg.get('train_fraction', 1.0)
         )
         
-    elif dataset_name == "coco":
-        pass
+    elif dataset_name == "coco" or dataset_name == "coco_binary":
+        
+        is_binary = True if dataset_name == "coco_binary" else False
+        
+        return get_coco_dataloaders(
+            data_dir=config['data']['data_dir'],
+            image_size=config['data']['image_size'],
+            batch_size=config['training']['batch_size'],
+            num_workers=config['data']['num_workers'],
+            seed=config['training'].get('seed', 42),
+            binary=is_binary,
+            imbalanced=config['data'].get('imbalanced', False)
+        )
         
     else:
         raise ValueError(f"Dataset '{dataset_name}' is not supported!")
