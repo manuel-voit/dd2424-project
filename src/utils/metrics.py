@@ -25,8 +25,15 @@ class MetricTracker:
             self.running_loss += loss_value * batch_size
 
     def get_batch_accuracy(self, preds, labels):
-        correct = preds.eq(labels).sum().item()
-        return correct / labels.numel()
+        if len(labels.shape) > 1 and labels.shape[1] > 1:
+            # Multi-label subset accuracy (every label has to match for the prediction to be correct)
+            correct_samples = (preds == labels).all(dim=1).sum().item()
+            total_samples = labels.size(0)
+        else:
+            # Multi-class
+            correct_samples = preds.eq(labels).sum().item()
+            total_samples = labels.numel()    
+        return correct_samples / total_samples
 
     # Computes final metrics at the end of the epoch
     def compute_epoch_metrics(self):
