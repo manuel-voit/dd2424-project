@@ -1,5 +1,6 @@
 import os
 import torch
+import random
 from torchvision import datasets
 from torch.utils.data import DataLoader, Subset
 import numpy as np
@@ -154,6 +155,11 @@ def get_coco_dataloaders(
         bin_labels = _get_coco_binary_labels(train_dataset_raw)
         indices = list(range(len(train_dataset_raw)))
         
+        if train_fraction < 1.0:
+            indices, _, bin_labels, _ = train_test_split(
+                indices, bin_labels, train_size=train_fraction, random_state=seed, stratify=bin_labels
+            )
+
         train_indices, val_indices = train_test_split(
             indices, test_size=0.2, random_state=seed, stratify=bin_labels
         )
@@ -184,6 +190,20 @@ def get_coco_dataloaders(
             multi_hot_labels=all_labels_matrix, 
             test_size=0.2 
         )
+
+        if train_fraction < 1.0:
+            random.seed(seed)
+            
+            # Subsample train indices
+            train_k = int(len(train_subset) * train_fraction)
+            new_train_indices = random.sample(train_subset.indices, train_k)
+            train_subset = Subset(train_dataset_raw, new_train_indices)
+            
+            # Subsample val indices
+            val_k = int(len(val_subset) * train_fraction)
+            new_val_indices = random.sample(val_subset.indices, val_k)
+            val_subset = Subset(train_dataset_raw, new_val_indices)
+
         # Apply the Val transforms to the val_subset
         val_subset.dataset = val_dataset_raw
 
