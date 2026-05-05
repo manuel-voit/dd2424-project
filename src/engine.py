@@ -31,7 +31,10 @@ def train_one_epoch(
         optimizer.step()
 
         # Track metrics
-        _, predicted = outputs.max(1)
+        if isinstance(criterion, nn.BCEWithLogitsLoss):
+            predicted = (torch.sigmoid(outputs) > 0.5).float()
+        else:
+            _, predicted = outputs.max(1)
         tracker.update(predicted, labels, loss.item())
 
         # Update progress bar
@@ -62,7 +65,11 @@ def evaluate(
         outputs = model(inputs)
         loss = criterion(outputs, labels)
 
-        _, predicted = outputs.max(1)
+        # Check if multi-label or multi-class
+        if isinstance(criterion, nn.BCEWithLogitsLoss):
+            predicted = (torch.sigmoid(outputs) > 0.5).float()
+        else:
+            _, predicted = outputs.max(1)
         tracker.update(predicted, labels, loss.item())
 
         batch_acc = tracker.get_batch_accuracy(predicted, labels)

@@ -1,5 +1,6 @@
 import torch
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix, multilabel_confusion_matrix
+import numpy as np
 
 class MetricTracker:
     def __init__(self):
@@ -24,20 +25,34 @@ class MetricTracker:
             self.running_loss += loss_value * batch_size
 
     def get_batch_accuracy(self, preds, labels):
-        correct = preds.eq(labels).sum().item()
-        return correct / labels.size(0)
+        if len(labels.shape) > 1 and labels.shape[1] > 1:
+            # Multi-label subset accuracy (every label has to match for the prediction to be correct)
+            correct_samples = (preds == labels).all(dim=1).sum().item()
+            total_samples = labels.size(0)
+        else:
+            # Multi-class
+            correct_samples = preds.eq(labels).sum().item()
+            total_samples = labels.numel()    
+        return correct_samples / total_samples
 
     # Computes final metrics at the end of the epoch
     def compute_epoch_metrics(self):
         preds = torch.cat(self.all_preds).numpy()
         labels = torch.cat(self.all_labels).numpy()
 
+        if len(labels.shape) > 1 and labels.shape[1] > 1:
+            # Multi-label
+            cm = multilabel_confusion_matrix(labels, preds)
+        else:
+            # Multi-class
+            cm = confusion_matrix(labels, preds)
+
         metrics = {
             "accuracy": accuracy_score(labels, preds),
             "f1_macro": f1_score(labels, preds, average='macro', zero_division=0),
             "precision_macro": precision_score(labels, preds, average='macro', zero_division=0),
             "recall_macro": recall_score(labels, preds, average='macro', zero_division=0),
-            "confusion_matrix": confusion_matrix(labels, preds)
+            "confusion_matrix": cm
         }
 
         # Calculate per class metrics
