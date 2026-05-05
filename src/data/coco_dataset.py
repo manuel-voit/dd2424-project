@@ -106,7 +106,8 @@ def get_coco_dataloaders(
     imbalanced=False,
     imbalance_factor=0.2,
     augmentation=True,
-    train_fraction=1.0
+    train_fraction=1.0,
+    oversample=False
 ):
     """   
     Args:
