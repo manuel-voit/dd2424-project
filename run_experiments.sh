@@ -1,9 +1,14 @@
 #!/bin/bash
-CONFIG_DIR="./configs"
+CONFIG_DIR="./configs/active"
+COMPLETED_DIR="./configs/completed"
 
 if [ ! -d "$CONFIG_DIR" ]; then
   echo "Error: Directory $CONFIG_DIR does not exist."
   exit 1
+fi
+
+if [ ! -d "$COMPLETED_DIR" ]; then
+  mkdir -p "$COMPLETED_DIR"
 fi
 
 # Iterate over all .yaml files in the configs directory
@@ -25,6 +30,7 @@ for config_file in "$CONFIG_DIR"/*.yaml; do
       echo "Warning: Training with $config_file failed with exit code $EXIT_CODE."
   else
       echo "Successfully completed: $config_file"
+      mv "$config_file" "$COMPLETED_DIR/"
   fi
 done
 
