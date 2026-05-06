@@ -9,6 +9,9 @@ tqdm>=4.65.0
 pyyaml>=6.0        
 # For stratified Train/Val splits 
 scikit-learn>=1.2.0
+scikit-multilearn>=0.2.0
+# For dataset
+pycocotools>=2.0.7
 # For test execution
 pytest>=8.0.0
 
