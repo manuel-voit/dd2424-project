@@ -7,7 +7,7 @@ import copy
 def main():
     parser = argparse.ArgumentParser(description="Generate experiment configurations.")
     # Batch size to be specified in bash: e.g. python3 generate_configs.py --batch-size 64
-    parser.add_argument("--batch-size", type=int, default=32, 
+    parser.add_argument("--batch-size", type=int, default=128, 
                         help="Batch size (hardware dependent)")
     args = parser.parse_args()
 
@@ -69,11 +69,11 @@ def main():
             del config["optimizer"]["lora_lr"]
         
         #Logging & File Naming
-        exp_name = f"{m}_{d['id']}_lr{lr}_{sched}_ft-{ft}"
+        run_name = f"{m}_{d['id']}_lr{lr}_{sched}_ft-{ft}"
         
-        config["logging"]["experiment_name"] = exp_name
+        config["logging"]["run_name"] = run_name
         
-        file_path = os.path.join("configs", "active", f"{exp_name}.yaml")
+        file_path = os.path.join("configs", "active", f"{run_name}.yaml")
         
         # Write to configs/active directory
         with open(file_path, "w") as f:

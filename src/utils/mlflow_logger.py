@@ -32,12 +32,7 @@ class MLflowLogger:
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
         # Determine the run name based on config
-        model_name = config['model']['name']
-        if 'lora' in config and config['lora']:
-            r = config['lora'].get('r', 0)
-            run_name = f"{model_name}_lora_r{r}_{timestamp}"
-        else:
-            run_name = f"{model_name}_full_finetune_{timestamp}"
+        run_name = config['logging']["run_name"] if "run_name" in config['logging'] else f"Run_{timestamp}"
         
         # Start the run
         self.run = mlflow.start_run(run_name=run_name)

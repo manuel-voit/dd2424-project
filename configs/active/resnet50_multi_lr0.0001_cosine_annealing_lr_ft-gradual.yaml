@@ -7,7 +7,7 @@ model:
     num_layers: 4
     unfreeze_every_n_epochs: 2
 training:
-  batch_size: 32
+  batch_size: 128
   epochs: 10
   learning_rate: 0.0001
   seed: 42
@@ -40,7 +40,8 @@ early_stopping:
   min_delta: 0.0
 logging:
   enabled: true
-  experiment_name: resnet50_multi_lr0.0001_cosine_annealing_lr_ft-gradual
+  run_name: resnet50_multi_lr0.0001_cosine_annealing_lr_ft-gradual
+  experiment_name: Baseline_Transfer_Learning
   dagshub_repo_owner: manuel.voit
   dagshub_repo_name: dd2424-project
   log_metrics: true
