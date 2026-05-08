@@ -12,6 +12,7 @@ class MetricTracker:
         self.all_labels = []
         self.running_loss = 0.0
         self.total_samples = 0
+        self.correct_samples = 0
 
     # Track predictions and loss batch-wise
     def update(self, preds, labels, loss_value=None):
@@ -23,6 +24,16 @@ class MetricTracker:
         
         if loss_value is not None:
             self.running_loss += loss_value * batch_size
+
+        if len(labels.shape) > 1 and labels.shape[1] > 1:
+            self.correct_samples += (preds.detach().cpu() == labels.detach().cpu()).all(dim=1).sum().item()
+        else:
+            self.correct_samples += preds.detach().cpu().eq(labels.detach().cpu()).sum().item()
+
+    def get_running_accuracy(self):
+        if self.total_samples == 0:
+            return 0.0
+        return self.correct_samples / self.total_samples
 
     def get_batch_accuracy(self, preds, labels):
         if len(labels.shape) > 1 and labels.shape[1] > 1:

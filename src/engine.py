@@ -38,10 +38,11 @@ def train_one_epoch(
         tracker.update(predicted, labels, loss.item())
 
         # Update progress bar
-        batch_acc = tracker.get_batch_accuracy(predicted, labels)
+        running_acc = tracker.get_running_accuracy()
+        running_loss = tracker.running_loss / max(tracker.total_samples, 1)
         progress_bar.set_postfix({
-            'loss': f"{loss.item():.4f}", 
-            'acc': f"{batch_acc*100:.1f}%"
+            'loss': f"{running_loss:.4f}", 
+            'acc': f"{running_acc*100:.1f}%"
         })
 
     return tracker.compute_epoch_metrics()
@@ -72,7 +73,8 @@ def evaluate(
             _, predicted = outputs.max(1)
         tracker.update(predicted, labels, loss.item())
 
-        batch_acc = tracker.get_batch_accuracy(predicted, labels)
-        progress_bar.set_postfix({'loss': f"{loss.item():.4f}", 'acc': f"{batch_acc*100:.1f}%"})
+        running_acc = tracker.get_running_accuracy()
+        running_loss = tracker.running_loss / max(tracker.total_samples, 1)
+        progress_bar.set_postfix({'loss': f"{running_loss:.4f}", 'acc': f"{running_acc*100:.1f}%"})
 
     return tracker.compute_epoch_metrics()
