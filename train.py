@@ -164,6 +164,11 @@ def main():
         unfroze_new = apply_finetuning_strategy(model, config, current_epoch=epoch)
         if unfroze_new:
             optimizer = update_optimizer(optimizer, model, config)
+            
+            # Give scheduler awareness of the newly added parameter group learning rates (prevent bug where scheduler does not update LR of newly unfrozen params)
+            if scheduler is not None and hasattr(scheduler, 'base_lrs'):
+                new_lrs = [group['lr'] for group in optimizer.param_groups[len(scheduler.base_lrs):]]
+                scheduler.base_lrs.extend(new_lrs)
         
         train_metrics = train_one_epoch(model, train_loader, criterion, optimizer, device)
         val_metrics = evaluate(model, val_loader, criterion, device)
