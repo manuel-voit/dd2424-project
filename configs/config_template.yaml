@@ -55,7 +55,7 @@ early_stopping:
 logging:
   enabled: true
   run_name: "Placeholder"
-  experiment_name: "Baseline_Transfer_Learning" 
+  experiment_name: "Baseline_Imbalance_Trainfrac_Transfer_Learning" 
   dagshub_repo_owner: "manuel.voit"
   dagshub_repo_name: "dd2424-project"
   log_metrics: true

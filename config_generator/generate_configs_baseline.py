@@ -11,8 +11,11 @@ def main():
                         help="Batch size (hardware dependent)")
     args = parser.parse_args()
 
+    # Determine project root
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     # Load template
-    template_path = "configs/config_template.yaml"
+    template_path = os.path.join(project_root, "configs", "config_template.yaml")
     if not os.path.exists(template_path):
         print(f"Error: Template not found at {template_path}")
         return
@@ -20,13 +23,15 @@ def main():
     with open(template_path, "r") as f:
         template = yaml.safe_load(f)
 
-    os.makedirs("configs/active", exist_ok=True)
-    os.makedirs("configs/completed", exist_ok=True)
+    active_dir = os.path.join(project_root, "configs", "active")
+    completed_dir = os.path.join(project_root, "configs", "completed")
+    os.makedirs(active_dir, exist_ok=True)
+    os.makedirs(completed_dir, exist_ok=True)
 
     # Define the hyperparameter grid
     models = ["resnet50", "resnet101"]
     
-    # We map 'binary' and 'multi' to their dataset strings and class counts
+    # Map 'binary' and 'multi' to their dataset strings and class counts
     datasets = [
         {"id": "binary", "name": "oxford_pets_binary", "num_classes": 2},
         {"id": "multi", "name": "oxford_pets", "num_classes": 37}
@@ -73,7 +78,7 @@ def main():
         
         config["logging"]["run_name"] = run_name
         
-        file_path = os.path.join("configs", "active", f"{run_name}.yaml")
+        file_path = os.path.join(active_dir, f"{run_name}.yaml")
         
         # Write to configs/active directory
         with open(file_path, "w") as f:
@@ -81,7 +86,7 @@ def main():
             
         generated_count += 1
 
-    print(f"Generated {generated_count} configurations in ./configs/active/")
+    print(f"Generated {generated_count} configurations in {active_dir}")
 
 if __name__ == "__main__":
     main()
