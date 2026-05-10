@@ -1,0 +1,49 @@
+model:
+  type: resnet
+  name: resnet50
+  num_classes: 2
+  fine_tuning:
+    strategy: gradual
+    num_layers: 4
+    unfreeze_every_n_epochs: 2
+training:
+  batch_size: 128
+  epochs: 10
+  learning_rate: 0.0005
+  seed: 42
+data:
+  name: oxford_pets_binary
+  data_dir: ./data
+  image_size: 224
+  train_fraction: 1.0
+  augmentation: true
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+  imbalance:
+    enabled: true
+    imbalance_factor: 0.2
+    use_weighted_loss: true
+    oversample: true
+optimizer:
+  name: adamw
+  lr: 0.0005
+  weight_decay: 0.0
+scheduler:
+  name: cosine_annealing_lr
+loss:
+  name: cross_entropy
+early_stopping:
+  enabled: true
+  patience: 3
+  min_delta: 0.0
+logging:
+  enabled: true
+  run_name: resnet50_binary_lr0.0005_cosine_annealing_lr_ft-gradual_frac1.0_imb-on-oswl
+  experiment_name: Baseline_Imbalance_Trainfrac_Transfer_Learning
+  dagshub_repo_owner: manuel.voit
+  dagshub_repo_name: dd2424-project
+  log_metrics: true
+  log_confusion_matrix: true
+  log_artifact: true
