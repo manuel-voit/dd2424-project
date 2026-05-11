@@ -2,7 +2,7 @@
 model:
   type: "resnet"
   name: "resnet50" 
-  num_classes: 2 
+  num_classes: 37 
   fine_tuning:
     strategy: "simultaneous"     
     num_layers: 4                
@@ -25,7 +25,7 @@ training:
   learning_rate: 0.001 
   seed: 42
 data:
-  name: "oxford_pets_binary" 
+  name: "oxford_pets" 
   data_dir: "./data"
   image_size: 224
   train_fraction: 1.0
@@ -43,9 +43,9 @@ optimizer:
   name: "adamw"
   lr: 0.001 
   lora_lr: 0.0001
-  weight_decay: 0.0
+  weight_decay: 0.0001
 scheduler:
-  name: "none" 
+  name: "cosine_annealing_lr" 
 loss:
   name: "cross_entropy"
 early_stopping:
