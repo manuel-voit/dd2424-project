@@ -2,25 +2,34 @@ import os
 import torch
 import torch.nn as nn
 
+from src.utils.loading import build_model_from_config
+
 
 def save_trainable_parameters(model: nn.Module, config: dict, save_path: str):
-    # Create an empty dictionary for the weights
-    trainable_state_dict = {}
-    for name, param in model.named_parameters():
-        if param.requires_grad:
-            trainable_state_dict[name] = param.detach().cpu().clone()
-    
-    # Package weights with config
+    # Build a fresh base model and store only the state entries that changed
+    # relative to that base. This keeps checkpoints compact while still
+    # preserving buffers such as BatchNorm running stats.
+    base_model = build_model_from_config(config)
+    current_state = model.state_dict()
+    base_state = base_model.state_dict()
+
+    diff_state_dict = {}
+    for name, tensor in current_state.items():
+        base_tensor = base_state.get(name)
+        if base_tensor is None or not torch.equal(tensor.detach().cpu(), base_tensor.detach().cpu()):
+            diff_state_dict[name] = tensor.detach().cpu().clone()
+
     checkpoint = {
         'config': config,
-        'model_state_dict': trainable_state_dict
+        'model_state_dict': diff_state_dict,
+        'state_dict_type': 'diff',
     }
     
     save_dir = os.path.dirname(save_path)
     if save_dir:
         os.makedirs(save_dir, exist_ok=True)
     torch.save(checkpoint, save_path)
-    print(f"Saved checkpoint with weights and config to {save_path}")
+    print(f"Saved compact diff checkpoint with {len(diff_state_dict)} changed state entries to {save_path}")
 
 class EarlyStopping:
     def __init__(self, config: dict, patience: int = 3, min_delta: float = 0.0, save_path: str = "checkpoints/best_model.pth"):
