@@ -1,20 +1,30 @@
 import torch
 import torch.nn as nn
+import time
 from tqdm import tqdm
 
 from src.utils.metrics import MetricTracker
 from src.utils.training_setup import set_batchnorm_mode
+
+
+def _synchronize_device(device: torch.device):
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+    elif device.type == "mps":
+        torch.mps.synchronize()
 
 def train_one_epoch(
     model: nn.Module, 
     dataloader: torch.utils.data.DataLoader, 
     criterion: nn.Module, 
     optimizer: torch.optim.Optimizer, 
-    device: torch.device
+    device: torch.device,
+    measure_compute_time: bool = False,
 ):
     model.train()
     set_batchnorm_mode(model)
     tracker = MetricTracker()
+    compute_time_seconds = 0.0
 
     # tqdm for progress bar
     progress_bar = tqdm(dataloader, desc="Training")
@@ -22,6 +32,10 @@ def train_one_epoch(
     for inputs, labels in progress_bar:
         inputs = inputs.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
+
+        if measure_compute_time:
+            _synchronize_device(device)
+            batch_compute_start = time.perf_counter()
 
         # Forward pass
         outputs = model(inputs)
@@ -31,6 +45,10 @@ def train_one_epoch(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        if measure_compute_time:
+            _synchronize_device(device)
+            compute_time_seconds += time.perf_counter() - batch_compute_start
 
         # Track metrics
         if isinstance(criterion, nn.BCEWithLogitsLoss):
@@ -47,7 +65,10 @@ def train_one_epoch(
             'acc': f"{running_acc*100:.1f}%"
         })
 
-    return tracker.compute_epoch_metrics()
+    metrics = tracker.compute_epoch_metrics()
+    if measure_compute_time:
+        metrics["compute_time_seconds"] = compute_time_seconds
+    return metrics
 
 @torch.no_grad()
 def evaluate(

@@ -61,3 +61,4 @@ logging:
   log_metrics: true
   log_confusion_matrix: true
   log_artifact: true
+  measure_compute_time: false

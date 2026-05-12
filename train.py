@@ -70,6 +70,7 @@ def main():
         logger = MLflowLogger(config=config)
     else:
         print("MLflow logging disabled.")
+    measure_compute_time = logging_cfg.get('measure_compute_time', False)
 
     # Data loading
     loaders = get_dataloaders(config=config)
@@ -157,6 +158,7 @@ def main():
         print(f"LoRA trainable LR: {optimizer_cfg.get('lora_lr', optimizer_cfg.get('lr', config['training']['learning_rate']))}")
 
     # Training Loop
+    epoch_compute_times = []
     for epoch in range(EPOCHS):
         print(f"\nEpoch {epoch+1}/{EPOCHS}")
         
@@ -170,8 +172,17 @@ def main():
                 new_lrs = [group['lr'] for group in optimizer.param_groups[len(scheduler.base_lrs):]]
                 scheduler.base_lrs.extend(new_lrs)
         
-        train_metrics = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        train_metrics = train_one_epoch(
+            model,
+            train_loader,
+            criterion,
+            optimizer,
+            device,
+            measure_compute_time=measure_compute_time
+        )
         val_metrics = evaluate(model, val_loader, criterion, device)
+        if measure_compute_time:
+            epoch_compute_times.append(train_metrics.pop("compute_time_seconds"))
         
         # Check early stopping & save weights
         if scheduler is not None:
@@ -211,9 +222,17 @@ def main():
     print(f"Final Test Acc: {test_metrics['accuracy']*100:.2f}% | Final Test F1: {test_metrics['f1_macro']:.4f}")
     
     test_log = {f"test_{k}": v for k, v in test_metrics.items()}
+    mean_epoch_compute_time = None
+    if measure_compute_time:
+        mean_epoch_compute_time = float(np.mean(epoch_compute_times)) if epoch_compute_times else 0.0
+        print(f"Mean Training Compute Time / Epoch: {mean_epoch_compute_time:.4f}s")
+
     if logger is not None:
         if logging_cfg.get('log_metrics', True):
-            logger.log_scalars(test_log, step=EPOCHS)
+            final_log = dict(test_log)
+            if mean_epoch_compute_time is not None:
+                final_log["train_mean_epoch_compute_time_seconds"] = mean_epoch_compute_time
+            logger.log_scalars(final_log, step=EPOCHS)
         if logging_cfg.get('log_confusion_matrix', True):
             logger.log_confusion_matrix(cm, step=EPOCHS)
 
