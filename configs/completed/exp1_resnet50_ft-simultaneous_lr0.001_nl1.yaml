@@ -3,13 +3,13 @@ model:
   name: resnet50
   num_classes: 37
   fine_tuning:
-    strategy: none
-    num_layers: 0
+    strategy: simultaneous
+    num_layers: 1
     unfreeze_every_n_epochs: 0
 training:
   batch_size: 128
   epochs: 10
-  learning_rate: 0.0005
+  learning_rate: 0.001
   seed: 42
 data:
   name: oxford_pets
@@ -28,7 +28,7 @@ data:
     oversample: false
 optimizer:
   name: adamw
-  lr: 0.0005
+  lr: 0.001
   weight_decay: 0.0001
 scheduler:
   name: cosine_annealing_lr
@@ -40,7 +40,7 @@ early_stopping:
   min_delta: 0.0
 logging:
   enabled: true
-  run_name: exp1_resnet50_ft-none_lr0.0005_nl0
+  run_name: exp1_resnet50_ft-simultaneous_lr0.001_nl1
   experiment_name: Exp1_Learning_Rates_and_Finetuning
   dagshub_repo_owner: manuel.voit
   dagshub_repo_name: dd2424-project

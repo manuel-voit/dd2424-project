@@ -31,8 +31,8 @@ def main():
     
     strategies_and_lrs = [
         ("none", lrs_linear_probing, [0]),
-        ("gradual", lrs_fine_tuning, [2, 3]),
-        ("simultaneous", lrs_fine_tuning, [2, 3])
+        ("gradual", lrs_fine_tuning, [1, 2]),
+        ("simultaneous", lrs_fine_tuning, [1, 2])
     ]
 
     generated_count = 0
@@ -51,11 +51,11 @@ def main():
                     config["model"]["fine_tuning"]["strategy"] = ft
                     config["model"]["fine_tuning"]["num_layers"] = nl
                     
-                    # gradual and simultaneous unfreeze every 3 epochs
-                    if ft in ["gradual", "simultaneous"]:
+                    # gradual unfreeze every 3 epochs
+                    if ft == "gradual":
                         config["model"]["fine_tuning"]["unfreeze_every_n_epochs"] = 3
                     else: 
-                        # If linear probing, no unfreezing
+                        # no gradual unfreezing for linear probing or simultaneous fine-tuning
                         config["model"]["fine_tuning"]["unfreeze_every_n_epochs"] = 0
 
                     # Strip LoRA configs for baselines

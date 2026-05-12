@@ -10,9 +10,9 @@ To start training, simply run train.py using a specific config:
 python3 train.py --config configs/your_config.yaml
 ```
 
-To run the tensorboard UI, which can be accessed via [localhost:6006](localhost:6006):
+To run the MLflow UI, which can be accessed via [http://127.0.0.1:5000/](http://127.0.0.1:5000/):
 ```bash
-python3 -m tensorboard.main --logdir=runs
+mlflow ui
 ```
 
 PyTorch will automatically download the Oxford-IIIT Pet dataset for you and load a test batch.

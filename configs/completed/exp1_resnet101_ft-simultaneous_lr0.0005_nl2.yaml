@@ -5,7 +5,7 @@ model:
   fine_tuning:
     strategy: simultaneous
     num_layers: 2
-    unfreeze_every_n_epochs: 3
+    unfreeze_every_n_epochs: 0
 training:
   batch_size: 128
   epochs: 10
