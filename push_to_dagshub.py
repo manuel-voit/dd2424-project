@@ -9,6 +9,7 @@ def migrate_to_dagshub():
     
     # Your DagsHub repository details
     DAGSHUB_REPO_OWNER = "manuel.voit"
+    DAGSHUB_USERNAME_FREDDI = "frederic.lorenz123"
     DAGSHUB_REPO_NAME = "dd2424-project"
     DAGSHUB_TOKEN = "<your_dagshub_access_token>"
     
