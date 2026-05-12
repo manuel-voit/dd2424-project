@@ -3,6 +3,7 @@ import torch.nn as nn
 from tqdm import tqdm
 
 from src.utils.metrics import MetricTracker
+from src.utils.training_setup import set_batchnorm_mode
 
 def train_one_epoch(
     model: nn.Module, 
@@ -12,6 +13,7 @@ def train_one_epoch(
     device: torch.device
 ):
     model.train()
+    set_batchnorm_mode(model)
     tracker = MetricTracker()
 
     # tqdm for progress bar

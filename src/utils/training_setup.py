@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.nn.modules.batchnorm import _BatchNorm
 
 def split_trainable_parameters(model: nn.Module):
     lora_params = []
@@ -235,3 +236,21 @@ def update_optimizer(optimizer: optim.Optimizer, model: nn.Module, config: dict)
         print(f"Update: Dynamically added {len(new_lora)} un-frozen LoRA tensors to the optimizer!")
     
     return optimizer
+
+def set_batchnorm_mode(model: nn.Module):
+    """
+    Keep BatchNorm layers in train mode only when their affine parameters are
+    trainable. Frozen BatchNorm layers are switched to eval mode so their
+    running statistics stop drifting during head-only or partial fine-tuning.
+    """
+    for module in model.modules():
+        if not isinstance(module, _BatchNorm):
+            continue
+
+        bn_params = list(module.parameters(recurse=False))
+        has_trainable_params = any(param.requires_grad for param in bn_params)
+
+        if has_trainable_params:
+            module.train()
+        else:
+            module.eval()
