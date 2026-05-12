@@ -25,6 +25,8 @@ logs/
 runs/
 tensorboard/
 assignment-description/
+mlruns/
+mlflow_temp_export_dir/
 
 # Checkpoints
 checkpoints/

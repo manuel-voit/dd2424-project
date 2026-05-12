@@ -22,4 +22,6 @@ seaborn>=0.13.0
 # For logging metrics 
 tensorboard>=2.13.0
 mlflow>=2.7.0
+mlflow-export-import>=1.2.0
+tabulate>=0.9.0
 dagshub>=0.3.0
