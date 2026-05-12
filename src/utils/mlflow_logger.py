@@ -20,11 +20,12 @@ def flatten_dict(d: dict, parent_key: str = '', sep: str = '.') -> dict:
 class MLflowLogger:
     def __init__(self, config: dict, experiment_name: Optional[str] = None):
         logging_cfg = config.get('logging', {})
-        dagshub.init(
-            repo_owner=logging_cfg.get('dagshub_repo_owner', "manuel.voit"),  
-            repo_name=logging_cfg.get('dagshub_repo_name', "dd2424-project"), 
-            mlflow=True
-        )
+        # dagshub.init(
+        #     repo_owner=logging_cfg.get('dagshub_repo_owner', "manuel.voit"),  
+        #     repo_name=logging_cfg.get('dagshub_repo_name', "dd2424-project"), 
+        #     mlflow=True
+        # )
+        mlflow.set_tracking_uri("file:./mlruns")
         
         # Group runs under one main experiment dashboard
         mlflow.set_experiment(experiment_name or logging_cfg.get('experiment_name', "Transfer_Learning"))
