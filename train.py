@@ -159,6 +159,9 @@ def main():
 
     # Training Loop
     epoch_compute_times = []
+    best_epoch = 1
+    best_val_loss = float('inf')
+    
     for epoch in range(EPOCHS):
         print(f"\nEpoch {epoch+1}/{EPOCHS}")
         
@@ -181,6 +184,12 @@ def main():
             measure_compute_time=measure_compute_time
         )
         val_metrics = evaluate(model, val_loader, criterion, device)
+        
+        # Track the best epoch independently
+        if val_metrics['loss'] < best_val_loss:
+            best_val_loss = val_metrics['loss']
+            best_epoch = epoch + 1
+            
         if measure_compute_time:
             epoch_compute_times.append(train_metrics.pop("compute_time_seconds"))
         
@@ -230,6 +239,8 @@ def main():
     if logger is not None:
         if logging_cfg.get('log_metrics', True):
             final_log = dict(test_log)
+            final_log["total_epochs_trained"] = epoch + 1
+            final_log["epoch_with_best_val_loss"] = best_epoch
             if mean_epoch_compute_time is not None:
                 final_log["train_mean_epoch_compute_time_seconds"] = mean_epoch_compute_time
             logger.log_scalars(final_log, step=EPOCHS)
