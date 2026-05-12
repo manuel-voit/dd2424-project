@@ -134,7 +134,8 @@ def apply_finetuning_strategy(model: nn.Module, config: dict, current_epoch: int
     anything_unfrozen = False
     
     if strategy != 'none':
-        num_layers = ft_config.get('num_layers', 1)
+        num_layers = ft_config.get('num_layers', 0)
+        num_layers += 1
         model_type = config.get('model', {}).get('type', 'resnet').lower()
         
         # Organize the top-level feature extraction blocks chronologically backwards
