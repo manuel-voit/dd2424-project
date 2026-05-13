@@ -3,6 +3,16 @@ import yaml
 import argparse
 import copy
 
+# --- Custom PyYAML Formatter to force inline lists ---
+class FlowList(list):
+    pass
+
+def flow_list_representer(dumper, data):
+    return dumper.represent_sequence('tag:yaml.org,2002:seq', data, flow_style=True)
+
+yaml.add_representer(FlowList, flow_list_representer)
+# -----------------------------------------------------
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Experiment 8 configurations.")
     parser.add_argument("--batch-size", type=int, default=128, 
@@ -22,13 +32,8 @@ def main():
     active_dir = os.path.join(project_root, "configs", "active")
     os.makedirs(active_dir, exist_ok=True)
 
-    # Set exclusively to resnet101
     models = ["resnet101"] 
-    
-    # Base locked parameters
     epochs = 10
-    
-    # Grid search values for LoRA Learning Rate
     lora_lrs = [0.05, 0.01, 0.005, 0.001, 0.0005, 0.0002, 0.0001, 0.00005, 0.00001]
 
     generated_count = 0
@@ -41,13 +46,10 @@ def main():
                 config["model"] = {}
             config["model"]["name"] = model
             
-            # Nested fine-tuning settings under 'model'
             if "fine_tuning" not in config["model"]:
                 config["model"]["fine_tuning"] = {}
                 
             config["model"]["fine_tuning"]["strategy"] = "none"
-            
-            # Safely pop out the unwanted fine-tuning keys if they exist in the template
             config["model"]["fine_tuning"].pop("num_layers", None)
             config["model"]["fine_tuning"].pop("unfreeze_every_n_epochs", None)
 
@@ -59,30 +61,29 @@ def main():
             
             # --- LORA SETTINGS ---
             if "lora" in config:
+                
+                # --- THE FIX IS HERE ---
+                # Using FlowList forces PyYAML to write: targets: [layer3, layer4]
+                config["lora"]["targets"] = FlowList(["layer3", "layer4"])
+                # -----------------------
+                
+                # Clean up target_layers if it exists
+                config["lora"].pop("target_layers", None)
+                
                 if "gradual_unfreeze" not in config["lora"]:
                     config["lora"]["gradual_unfreeze"] = {}
                     
-                # Ensure it targets the 'enabled' sub-key
                 config["lora"]["gradual_unfreeze"]["enabled"] = False
                 
-                # --- STRIP UNUSED SCHEDULE ---
-                # Pop from inside gradual_unfreeze if it lives there
                 config["lora"]["gradual_unfreeze"].pop("schedule", None)
-                # Pop from the main lora block if it lives there instead
                 config["lora"].pop("schedule", None) 
-                # -----------------------------
-                
-                # Strip duplicated/useless lora parameters if they exist
                 config["lora"].pop("learning_rate", None)
             
             # --- OPTIMIZER SETTINGS ---
             if "optimizer" not in config:
                 config["optimizer"] = {}
             
-            # Set the grid search target 
             config["optimizer"]["lora_lr"] = lora_lr
-            
-            # Lock standard learning rate (using 'lr' as per your schema)
             config["optimizer"]["lr"] = 0.005 
             
             # --- LOGGING & FILE NAMING ---
@@ -90,7 +91,6 @@ def main():
                 config["logging"] = {}
             config["logging"]["experiment_name"] = "Exp8_LoRA_LR_Search"
             
-            # Formatting the LR to avoid awkward decimals in filenames (e.g., 1e-05)
             lr_str = f"{lora_lr:.5f}".rstrip('0').rstrip('.')
             run_name = f"exp8_{model}_lora_lr_{lr_str}"
             
