@@ -1,0 +1,50 @@
+model:
+  type: resnet
+  name: resnet50
+  num_classes: 37
+  fine_tuning:
+    strategy: gradual
+    num_layers: 1
+    unfreeze_every_n_epochs: 2
+training:
+  batch_size: 128
+  epochs: 15
+  learning_rate: 0.0001
+  seed: 42
+data:
+  name: oxford_pets
+  data_dir: ./data
+  image_size: 224
+  train_fraction: 1.0
+  augmentation: true
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+  imbalance:
+    enabled: false
+    imbalance_factor: 0.2
+    use_weighted_loss: false
+    oversample: false
+optimizer:
+  name: adamw
+  lr: 0.0001
+  weight_decay: 5.0e-05
+scheduler:
+  name: cosine_annealing_lr
+loss:
+  name: cross_entropy
+early_stopping:
+  enabled: true
+  patience: 3
+  min_delta: 0.0
+logging:
+  enabled: true
+  run_name: exp5_resnet50_ft-gradual_nl1_ufe2_lr0.000100_l2-5e-05
+  experiment_name: Exp5_Gradual_Unfreezing
+  dagshub_repo_owner: manuel.voit
+  dagshub_repo_name: dd2424-project
+  log_metrics: true
+  log_confusion_matrix: true
+  log_artifact: true
+  measure_compute_time: false
