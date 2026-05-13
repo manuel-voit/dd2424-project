@@ -85,6 +85,7 @@ def main():
             
             config["optimizer"]["lora_lr"] = lora_lr
             config["optimizer"]["lr"] = 0.005 
+            config["training"]["learning_rate"] = 0.005
             
             # --- LOGGING & FILE NAMING ---
             if "logging" not in config:
