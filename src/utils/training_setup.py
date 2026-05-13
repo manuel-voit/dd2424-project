@@ -255,3 +255,29 @@ def set_batchnorm_mode(model: nn.Module):
             module.train()
         else:
             module.eval()
+
+def get_trainable_parameter_breakdown(model: nn.Module, model_type: str):
+    head_prefixes = {
+        "resnet": ("fc.",),
+        "vit": ("head.",),
+    }.get(model_type, tuple())
+
+    breakdown = {
+        "head": 0,
+        "backbone": 0,
+        "lora": 0,
+    }
+
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+
+        num_params = param.numel()
+        if ".lora_" in name:
+            breakdown["lora"] += num_params
+        elif any(name.startswith(prefix) for prefix in head_prefixes):
+            breakdown["head"] += num_params
+        else:
+            breakdown["backbone"] += num_params
+
+    return breakdown

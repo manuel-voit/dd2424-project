@@ -23,7 +23,8 @@ from src.utils.training_setup import (
     build_optimizer,
     build_scheduler,
     apply_finetuning_strategy,
-    update_optimizer
+    update_optimizer,
+    get_trainable_parameter_breakdown,
 )
 
 
@@ -146,6 +147,9 @@ def main():
     trained_params = sum(p.numel() for p in trainable_params)
     print(f"Total Parameters: {total_params:,}")
     print(f"Trainable Parameters: {trained_params:,} ({100 * trained_params / total_params:.2f}%)")
+    initial_trainable_params = trained_params
+    initial_trainable_fraction = trained_params / total_params if total_params > 0 else 0.0
+    initial_breakdown = get_trainable_parameter_breakdown(model, MODEL_TYPE)
 
     optimizer_cfg = config.get('optimizer', {})
     print(f"Optimizer: {optimizer_cfg.get('name', 'adamw')}")
@@ -161,6 +165,11 @@ def main():
     epoch_compute_times = []
     best_epoch = 1
     best_val_loss = float('inf')
+    best_val_accuracy = float('-inf')
+    best_val_f1_macro = float('-inf')
+
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
     
     for epoch in range(EPOCHS):
         print(f"\nEpoch {epoch+1}/{EPOCHS}")
@@ -189,6 +198,10 @@ def main():
         if val_metrics['loss'] < best_val_loss:
             best_val_loss = val_metrics['loss']
             best_epoch = epoch + 1
+        if val_metrics['accuracy'] > best_val_accuracy:
+            best_val_accuracy = val_metrics['accuracy']
+        if val_metrics['f1_macro'] > best_val_f1_macro:
+            best_val_f1_macro = val_metrics['f1_macro']
             
         if measure_compute_time:
             epoch_compute_times.append(train_metrics.pop("compute_time_seconds"))
@@ -232,17 +245,50 @@ def main():
     
     test_log = {f"test_{k}": v for k, v in test_metrics.items()}
     mean_epoch_compute_time = None
+    total_training_compute_time = None
     if measure_compute_time:
         mean_epoch_compute_time = float(np.mean(epoch_compute_times)) if epoch_compute_times else 0.0
+        total_training_compute_time = float(np.sum(epoch_compute_times)) if epoch_compute_times else 0.0
         print(f"Mean Training Compute Time / Epoch: {mean_epoch_compute_time:.4f}s")
+        print(f"Total Training Compute Time: {total_training_compute_time:.4f}s")
+
+    final_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    final_trainable_fraction = final_trainable_params / total_params if total_params > 0 else 0.0
+    final_breakdown = get_trainable_parameter_breakdown(model, MODEL_TYPE)
+
+    peak_gpu_memory_allocated_mb = None
+    peak_gpu_memory_reserved_mb = None
+    if device.type == "cuda":
+        peak_gpu_memory_allocated_mb = torch.cuda.max_memory_allocated(device) / (1024 ** 2)
+        peak_gpu_memory_reserved_mb = torch.cuda.max_memory_reserved(device) / (1024 ** 2)
+        print(f"Peak GPU Memory Allocated: {peak_gpu_memory_allocated_mb:.2f} MB")
+        print(f"Peak GPU Memory Reserved:  {peak_gpu_memory_reserved_mb:.2f} MB")
 
     if logger is not None:
         if logging_cfg.get('log_metrics', True):
             final_log = dict(test_log)
             final_log["total_epochs_trained"] = epoch + 1
             final_log["epoch_with_best_val_loss"] = best_epoch
+            final_log["best_val_accuracy"] = best_val_accuracy
+            final_log["best_val_f1_macro"] = best_val_f1_macro
+            final_log["model_total_params"] = total_params
+            final_log["model_trainable_params_initial"] = initial_trainable_params
+            final_log["model_trainable_fraction_initial"] = initial_trainable_fraction
+            final_log["model_trainable_head_params"] = initial_breakdown["head"]
+            final_log["model_trainable_backbone_params_initial"] = initial_breakdown["backbone"]
+            final_log["model_trainable_lora_params_initial"] = initial_breakdown["lora"]
+            final_log["model_trainable_params_final"] = final_trainable_params
+            final_log["model_trainable_fraction_final"] = final_trainable_fraction
+            final_log["model_trainable_backbone_params_final"] = final_breakdown["backbone"]
+            final_log["model_trainable_lora_params_final"] = final_breakdown["lora"]
             if mean_epoch_compute_time is not None:
                 final_log["train_mean_epoch_compute_time_seconds"] = mean_epoch_compute_time
+            if total_training_compute_time is not None:
+                final_log["train_total_compute_time_seconds"] = total_training_compute_time
+            if peak_gpu_memory_allocated_mb is not None:
+                final_log["train_peak_gpu_memory_allocated_mb"] = peak_gpu_memory_allocated_mb
+            if peak_gpu_memory_reserved_mb is not None:
+                final_log["train_peak_gpu_memory_reserved_mb"] = peak_gpu_memory_reserved_mb
             logger.log_scalars(final_log, step=EPOCHS)
         if logging_cfg.get('log_confusion_matrix', True):
             logger.log_confusion_matrix(cm, step=EPOCHS)
