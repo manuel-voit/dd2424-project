@@ -33,30 +33,29 @@ def main():
     augmentations = [True, False]
     
     # L2
-    weight_decays = [0.00005, 0.0001, 0.0005]
+    weight_decays = [0.00001, 0.0001, 0.001]
 
-    # XXXX VALUES TO BE DETERMINED XXXXX
+    # Values from previous experiments
     strategies = [
-        {THIS IS TO INTENTIONALLY BREAK, REVIEW STRATEGIES BEFORE RUNNING},
         {
             "name": "linear",
             "ft_strategy": "none",
             "num_layers": 0,
             "unfreeze_every_n_epochs": 0,
-            "lr": 0.001 
+            "lr": 0.005 
         },
         {
             "name": "simultaneous",
             "ft_strategy": "simultaneous",
-            "num_layers": 4, 
+            "num_layers": 1, 
             "unfreeze_every_n_epochs": 0,
             "lr": 0.0001
         },
         {
             "name": "gradual",
             "ft_strategy": "gradual",
-            "num_layers": 4,
-            "unfreeze_every_n_epochs": 2,
+            "num_layers": 1,
+            "unfreeze_every_n_epochs": 3,
             "lr": 0.0001
         }
     ]
