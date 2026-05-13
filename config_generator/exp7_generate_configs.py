@@ -17,7 +17,7 @@ def main():
         return
 
     with open(template_path, "r") as f:
-        template = yaml.safe_load(f)
+        template = yaml.safe_load(f) or {}
 
     active_dir = os.path.join(project_root, "configs", "active")
     os.makedirs(active_dir, exist_ok=True)
@@ -42,8 +42,11 @@ def main():
             config = copy.deepcopy(template)
             
             config["model"]["name"] = model
+            if "resnet" in model.lower():
+                config["model"]["type"] = "resnet"
+            elif "vit" in model.lower():
+                config["model"]["type"] = "vit"
             
-            # Lock in Linear Probing parameters
             config["training"]["learning_rate"] = best_lr
             config["optimizer"]["lr"] = best_lr
             config["optimizer"]["weight_decay"] = best_l2
@@ -52,24 +55,17 @@ def main():
             
             config["model"]["fine_tuning"]["strategy"] = "none"
             config["model"]["fine_tuning"]["num_layers"] = 0
-            config["model"]["fine_tuning"]["unfreeze_every_n_epochs"] = 0
-
-            if "data" not in config:
-                config["data"] = {}
-            if "imbalance" not in config["data"] or not isinstance(config["data"]["imbalance"], dict):
-                config["data"]["imbalance"] = {}
+            config["model"]["fine_tuning"]["unfreeze_every_n_epochs"] = 1
 
             config["data"]["imbalance"]["enabled"] = imb
             config["data"]["imbalance"]["oversample"] = osamp
             config["data"]["imbalance"]["use_weighted_loss"] = wloss
 
-            # Strip LoRA configs for baselines
             if "lora" in config:
                 del config["lora"]
             if "lora_lr" in config["optimizer"]:
                 del config["optimizer"]["lora_lr"]
             
-            # Logging & File Naming
             config["logging"]["experiment_name"] = "Exp7_ClassImbalance_and_Countermeasures"
             run_name = f"exp7_{model}_ft-none_{setup_name}"
             config["logging"]["run_name"] = run_name

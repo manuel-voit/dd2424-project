@@ -17,7 +17,7 @@ def main():
         return
 
     with open(template_path, "r") as f:
-        template = yaml.safe_load(f)
+        template = yaml.safe_load(f) or {}
 
     active_dir = os.path.join(project_root, "configs", "active")
     os.makedirs(active_dir, exist_ok=True)
@@ -32,14 +32,14 @@ def main():
         config = copy.deepcopy(template)
         
         config["model"]["name"] = model
-        
+        if "resnet" in model.lower():
+            config["model"]["type"] = "resnet"
+        elif "vit" in model.lower():
+            config["model"]["type"] = "vit"
+            
         config["model"]["num_classes"] = 2
-        
-        if "data" not in config:
-            config["data"] = {}
         config["data"]["num_classes"] = 2
         config["data"]["task"] = "binary" 
-        # ---------------------------------------
         
         config["training"]["learning_rate"] = baseline_lr
         config["optimizer"]["lr"] = baseline_lr
