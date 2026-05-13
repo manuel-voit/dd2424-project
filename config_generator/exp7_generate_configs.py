@@ -56,10 +56,12 @@ def main():
 
             if "data" not in config:
                 config["data"] = {}
-                
-            config["data"]["imbalance"] = imb
-            config["data"]["oversampling"] = osamp
-            config["training"]["weighted_loss"] = wloss
+            if "imbalance" not in config["data"] or not isinstance(config["data"]["imbalance"], dict):
+                config["data"]["imbalance"] = {}
+
+            config["data"]["imbalance"]["enabled"] = imb
+            config["data"]["imbalance"]["oversample"] = osamp
+            config["data"]["imbalance"]["use_weighted_loss"] = wloss
 
             # Strip LoRA configs for baselines
             if "lora" in config:

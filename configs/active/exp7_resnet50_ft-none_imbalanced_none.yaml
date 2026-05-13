@@ -11,7 +11,6 @@ training:
   epochs: 10
   learning_rate: 0.005
   seed: 42
-  weighted_loss: false
 data:
   name: oxford_pets
   data_dir: ./data
@@ -22,8 +21,11 @@ data:
   pin_memory: true
   persistent_workers: true
   prefetch_factor: 4
-  imbalance: true
-  oversampling: false
+  imbalance:
+    enabled: true
+    imbalance_factor: 0.2
+    use_weighted_loss: false
+    oversample: false
 optimizer:
   name: adamw
   lr: 0.005
