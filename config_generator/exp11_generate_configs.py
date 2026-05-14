@@ -14,7 +14,7 @@ BLOCKS_TO_UNFREEZE = {
 # Update these once Exp9/10 determine the preferred settings.
 DEFAULT_BEST_RANK = 8
 DEFAULT_TARGET_MODE = "targeted"  # "targeted" or "general"
-DEFAULT_LR = 0.0001
+DEFAULT_LR = 0.005
 DEFAULT_LORA_LR = 0.001
 DEFAULT_WEIGHT_DECAY = 0.0001
 DEFAULT_EPOCHS = 15
