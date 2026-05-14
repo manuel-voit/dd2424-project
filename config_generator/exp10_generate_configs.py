@@ -9,8 +9,8 @@ NUM_LAST_STAGES = [1, 2, 3, 4]
 TARGET_MODES = ["targeted", "general"]
 
 # Update once Exp9 determines the preferred rank.
-DEFAULT_BEST_RANK = 8
-DEFAULT_LR = 0.0001
+RANKS = [1, 8]
+DEFAULT_LR = 0.005
 DEFAULT_LORA_LR = 0.001
 DEFAULT_WEIGHT_DECAY = 0.0001
 DEFAULT_EPOCHS = 10
@@ -63,41 +63,42 @@ def main():
     for model in MODELS:
         for num_last_stages in NUM_LAST_STAGES:
             for target_mode in TARGET_MODES:
-                config = copy.deepcopy(template)
+                for rank in RANKS:
+                    config = copy.deepcopy(template)
 
-                config["model"]["name"] = model
-                config["model"]["fine_tuning"]["strategy"] = "none"
-                config["model"]["fine_tuning"]["num_layers"] = 0
-                config["model"]["fine_tuning"]["unfreeze_every_n_epochs"] = 0
+                    config["model"]["name"] = model
+                    config["model"]["fine_tuning"]["strategy"] = "none"
+                    config["model"]["fine_tuning"]["num_layers"] = 0
+                    config["model"]["fine_tuning"]["unfreeze_every_n_epochs"] = 0
 
-                config["training"]["batch_size"] = args.batch_size
-                config["training"]["epochs"] = DEFAULT_EPOCHS
-                config["training"]["learning_rate"] = DEFAULT_LR
+                    config["training"]["batch_size"] = args.batch_size
+                    config["training"]["epochs"] = DEFAULT_EPOCHS
+                    config["training"]["learning_rate"] = DEFAULT_LR
 
-                config["optimizer"]["lr"] = DEFAULT_LR
-                config["optimizer"]["lora_lr"] = DEFAULT_LORA_LR
-                config["optimizer"]["weight_decay"] = DEFAULT_WEIGHT_DECAY
-                config["scheduler"]["name"] = "cosine_annealing_lr"
+                    config["optimizer"]["lr"] = DEFAULT_LR
+                    config["optimizer"]["lora_lr"] = DEFAULT_LORA_LR
+                    config["optimizer"]["weight_decay"] = DEFAULT_WEIGHT_DECAY
+                    config["scheduler"]["name"] = "cosine_annealing_lr"
 
-                config["lora"]["r"] = DEFAULT_BEST_RANK
-                config["lora"]["alpha"] = 2 * DEFAULT_BEST_RANK
-                config["lora"]["learning_rate"] = DEFAULT_LORA_LR
-                config["lora"]["targets"] = get_lora_targets(model, target_mode, num_last_stages)
-                config["lora"]["gradual_unfreeze"]["enabled"] = False
-                config["lora"]["gradual_unfreeze"]["schedule"] = {}
+                    config["lora"]["r"] = rank
+                    config["lora"]["alpha"] = 2 * rank
+                    config["lora"]["learning_rate"] = DEFAULT_LORA_LR
+                    config["lora"]["targets"] = get_lora_targets(model, target_mode, num_last_stages)
+                    config["lora"]["gradual_unfreeze"]["enabled"] = False
+                    config["lora"]["gradual_unfreeze"]["schedule"] = {}
 
-                config["logging"]["experiment_name"] = "Exp10_LoRA_Location_Study"
-                run_name = (
-                    f"exp10_{model}_lora-{target_mode}_"
-                    f"nl{num_last_stages}_r{DEFAULT_BEST_RANK}"
-                )
-                config["logging"]["run_name"] = run_name
+                    config["logging"]["experiment_name"] = "Exp10_LoRA_Location_Study"
+                    run_name = (
+                        f"exp10_{model}_lora-{target_mode}_"
+                        f"nl{num_last_stages}_r{rank}"
+                    )
+                    config["logging"]["run_name"] = run_name
 
-                file_path = os.path.join(active_dir, f"{run_name}.yaml")
-                with open(file_path, "w") as f:
-                    yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+                    file_path = os.path.join(active_dir, f"{run_name}.yaml")
+                    with open(file_path, "w") as f:
+                        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
-                generated_count += 1
+                    generated_count += 1
 
     print(f"Generated {generated_count} configurations for Experiment 10 in {active_dir}")
 
