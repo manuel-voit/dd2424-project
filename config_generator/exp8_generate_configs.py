@@ -32,7 +32,7 @@ def main():
     active_dir = os.path.join(project_root, "configs", "active")
     os.makedirs(active_dir, exist_ok=True)
 
-    models = ["resnet101"] 
+    models = ["resnet50", "resnet101"] 
     epochs = 10
     lora_lrs = [0.05, 0.01, 0.005, 0.001, 0.0005, 0.0002, 0.0001, 0.00005, 0.00001]
 
