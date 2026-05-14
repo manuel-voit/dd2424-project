@@ -164,6 +164,8 @@ def main():
     # Training Loop
     epoch_compute_times = []
     best_epoch = 1
+    best_epoch_accuracy = 1
+    best_epoch_f1_macro = 1
     best_val_loss = float('inf')
     best_val_accuracy = float('-inf')
     best_val_f1_macro = float('-inf')
@@ -200,8 +202,10 @@ def main():
             best_epoch = epoch + 1
         if val_metrics['accuracy'] > best_val_accuracy:
             best_val_accuracy = val_metrics['accuracy']
+            best_epoch_accuracy = epoch + 1
         if val_metrics['f1_macro'] > best_val_f1_macro:
             best_val_f1_macro = val_metrics['f1_macro']
+            best_epoch_f1_macro = epoch + 1
             
         if measure_compute_time:
             epoch_compute_times.append(train_metrics.pop("compute_time_seconds"))
@@ -269,6 +273,8 @@ def main():
             final_log = dict(test_log)
             final_log["total_epochs_trained"] = epoch + 1
             final_log["epoch_with_best_val_loss"] = best_epoch
+            final_log["epoch_with_best_val_accuracy"] = best_epoch_accuracy
+            final_log["epoch_with_best_val_f1_macro"] = best_epoch_f1_macro
             final_log["best_val_accuracy"] = best_val_accuracy
             final_log["best_val_f1_macro"] = best_val_f1_macro
             final_log["model_total_params"] = total_params
