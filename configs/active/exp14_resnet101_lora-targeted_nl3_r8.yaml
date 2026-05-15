@@ -72,7 +72,7 @@ optimizer:
 scheduler:
   name: cosine_annealing_lr
 loss:
-  name: cross_entropy
+  name: bce_with_logits
 early_stopping:
   enabled: true
   patience: 3
