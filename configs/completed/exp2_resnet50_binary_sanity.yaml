@@ -12,7 +12,7 @@ training:
   learning_rate: 0.005
   seed: 42
 data:
-  name: oxford_pets
+  name: oxford_pets_binary
   data_dir: ./data
   image_size: 224
   train_fraction: 1.0

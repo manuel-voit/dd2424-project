@@ -5,7 +5,7 @@ model:
   fine_tuning:
     strategy: none
     num_layers: 0
-    unfreeze_every_n_epochs: 0
+    unfreeze_every_n_epochs: 1
 training:
   batch_size: 128
   epochs: 10
@@ -23,7 +23,7 @@ data:
   prefetch_factor: 4
   imbalance:
     enabled: false
-    imbalance_factor: 0.2
+    imbalance_factor: 0.4
     use_weighted_loss: false
     oversample: false
 optimizer:
