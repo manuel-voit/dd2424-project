@@ -1,0 +1,61 @@
+model:
+  type: resnet
+  name: resnet101
+  num_classes: 37
+  fine_tuning:
+    strategy: none
+    num_layers: 0
+    unfreeze_every_n_epochs: 0
+lora:
+  r: 1
+  alpha: 2
+  targets:
+  - layer4
+  - layer3
+  gradual_unfreeze:
+    enabled: false
+    schedule: {}
+  learning_rate: 0.001
+training:
+  batch_size: 128
+  epochs: 15
+  learning_rate: 0.005
+  seed: 42
+data:
+  name: oxford_pets
+  data_dir: ./data
+  image_size: 224
+  train_fraction: 0.02
+  augmentation: true
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+  imbalance:
+    enabled: false
+    imbalance_factor: 0.2
+    use_weighted_loss: false
+    oversample: false
+optimizer:
+  name: adamw
+  lr: 0.005
+  lora_lr: 0.001
+  weight_decay: 0.0001
+scheduler:
+  name: cosine_annealing_lr
+loss:
+  name: cross_entropy
+early_stopping:
+  enabled: true
+  patience: 3
+  min_delta: 0.0
+logging:
+  enabled: true
+  run_name: exp12_resnet101_lora-general_nl2_r1_frac-0.02_aug-on
+  experiment_name: Exp12_LoRA_Limited_Train_Data
+  dagshub_repo_owner: manuel.voit
+  dagshub_repo_name: dd2424-project
+  log_metrics: true
+  log_confusion_matrix: true
+  log_artifact: true
+  measure_compute_time: false
