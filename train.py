@@ -225,6 +225,8 @@ def main():
 
         print(f"Train Loss: {train_metrics['loss']:.4f} | Train Acc: {train_metrics['accuracy']*100:.2f}% | Train F1: {train_metrics['f1_macro']:.4f}")
         print(f"Val Loss: {val_metrics['loss']:.4f} | Val Acc: {val_metrics['accuracy']*100:.2f}% | Val F1:   {val_metrics['f1_macro']:.4f}")
+        if "mAP" in val_metrics:
+            print(f"mAP: {val_metrics['mAP']:.4f} ")
 
         # Remove confusion matrices from logs to avoid crashing the logger
         train_metrics.pop("confusion_matrix", None)

@@ -42,7 +42,8 @@ def main():
     print(f"Final Test Accuracy: {test_metrics['accuracy'] * 100:.2f}%")
     print(f"Final Test Loss:     {test_metrics['loss']:.4f}")
     print(f"Final Test F1:       {test_metrics['f1_macro']:.4f}")
-
+    if "mAP" in test_metrics:
+        print(f"Final Test mAP:      {test_metrics['mAP']:.4f}")
 
 if __name__ == "__main__":
     main()

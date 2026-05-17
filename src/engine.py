@@ -52,10 +52,13 @@ def train_one_epoch(
 
         # Track metrics
         if isinstance(criterion, nn.BCEWithLogitsLoss):
-            predicted = (torch.sigmoid(outputs) > 0.5).float()
+            probs = torch.sigmoid(outputs)
+            predicted = (probs > 0.5).float()
+            tracker.update(preds=predicted, labels=labels, probs=probs, loss_value=loss.item())
         else:
+            probs = torch.softmax(outputs, dim=1)
             _, predicted = outputs.max(1)
-        tracker.update(predicted, labels, loss.item())
+            tracker.update(preds=predicted, labels=labels, probs=probs, loss_value=loss.item())
 
         # Update progress bar
         running_acc = tracker.get_running_accuracy()
@@ -91,10 +94,13 @@ def evaluate(
 
         # Check if multi-label or multi-class
         if isinstance(criterion, nn.BCEWithLogitsLoss):
-            predicted = (torch.sigmoid(outputs) > 0.5).float()
+            probs = torch.sigmoid(outputs)
+            predicted = (probs > 0.5).float()
+            tracker.update(preds=predicted, labels=labels, probs=probs, loss_value=loss.item())
         else:
+            probs = torch.softmax(outputs, dim=1)
             _, predicted = outputs.max(1)
-        tracker.update(predicted, labels, loss.item())
+            tracker.update(preds=predicted, labels=labels, probs=probs, loss_value=loss.item())
 
         running_acc = tracker.get_running_accuracy()
         running_loss = tracker.running_loss / max(tracker.total_samples, 1)

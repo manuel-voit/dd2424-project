@@ -1,5 +1,5 @@
 import torch
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, confusion_matrix, multilabel_confusion_matrix
+from sklearn.metrics import accuracy_score, average_precision_score, f1_score, precision_score, recall_score, confusion_matrix, multilabel_confusion_matrix
 import numpy as np
 
 class MetricTracker:
@@ -10,15 +10,19 @@ class MetricTracker:
     def reset(self):
         self.all_preds = []
         self.all_labels = []
+        self.all_probs = []
         self.running_loss = 0.0
         self.total_samples = 0
         self.correct_samples = 0
 
     # Track predictions and loss batch-wise
-    def update(self, preds, labels, loss_value=None):
+    def update(self, preds, labels, probs=None, loss_value=None):
         self.all_preds.append(preds.detach().cpu())
         self.all_labels.append(labels.detach().cpu())
-        
+            
+        if probs is not None:
+            self.all_probs.append(probs.detach().cpu())
+
         batch_size = labels.size(0)
         self.total_samples += batch_size
         
@@ -51,7 +55,9 @@ class MetricTracker:
         preds = torch.cat(self.all_preds).numpy()
         labels = torch.cat(self.all_labels).numpy()
 
-        if len(labels.shape) > 1 and labels.shape[1] > 1:
+        is_multilabel = len(labels.shape) > 1 and labels.shape[1] > 1
+
+        if is_multilabel:
             # Multi-label
             cm = multilabel_confusion_matrix(labels, preds)
         else:
@@ -65,6 +71,10 @@ class MetricTracker:
             "recall_macro": recall_score(labels, preds, average='macro', zero_division=0),
             "confusion_matrix": cm
         }
+        if self.all_probs and is_multilabel:
+            probs = torch.cat(self.all_probs).numpy()
+            metrics["mAP"] = average_precision_score(labels, probs, average='macro')
+            per_class_ap = average_precision_score(labels, probs, average=None)
 
         # Calculate per class metrics
         per_class_f1 = f1_score(labels, preds, average=None, zero_division=0)
@@ -75,6 +85,9 @@ class MetricTracker:
             metrics[f"f1_class_{class_idx}"] = float(per_class_f1[class_idx])
             metrics[f"precision_class_{class_idx}"] = float(per_class_prec[class_idx])
             metrics[f"recall_class_{class_idx}"] = float(per_class_rec[class_idx])
+
+            if self.all_probs and is_multilabel:
+                metrics[f"ap_class_{class_idx}"] = float(per_class_ap[class_idx])
 
         if self.total_samples > 0:
             metrics["loss"] = self.running_loss / self.total_samples
