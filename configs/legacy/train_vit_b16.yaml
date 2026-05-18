@@ -30,6 +30,9 @@ optimizer:
   name: "adamw"
   lr: 0.0005
   weight_decay: 0.0
+  llrd:
+    enabled: true
+    decay: 0.75
 scheduler:
   name: "none"
 loss:

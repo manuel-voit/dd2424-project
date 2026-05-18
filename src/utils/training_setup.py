@@ -22,6 +22,61 @@ def split_trainable_parameters(model: nn.Module):
 
     return non_lora_params, lora_params
 
+
+def _get_vit_llrd_info(model_name: str):
+    model_name = model_name.lower()
+    if model_name == "vit_b_16":
+        return {"enabled": True, "num_layers": 14}
+    return {"enabled": False, "num_layers": 0}
+
+
+def _get_vit_layer_id(param_name: str, model_name: str):
+    model_name = model_name.lower()
+
+    if model_name == "vit_b_16":
+        if param_name.startswith("heads."):
+            return 13
+        if param_name.startswith("encoder.ln."):
+            return 12
+        if param_name.startswith("encoder.layers.encoder_layer_"):
+            layer_str = param_name.split("encoder.layers.encoder_layer_", 1)[1].split(".", 1)[0]
+            return int(layer_str) + 1
+        return 0
+
+
+def _build_non_lora_param_groups(model: nn.Module, config: dict, base_lr: float):
+    model_cfg = config.get("model", {})
+    model_type = model_cfg.get("type", "").lower()
+    model_name = model_cfg.get("name", "")
+    llrd_cfg = config.get("optimizer", {}).get("llrd", {}) or {}
+    llrd_enabled = bool(llrd_cfg.get("enabled", False)) and model_type == "vit"
+
+    non_lora_named_params = [
+        (name, param)
+        for name, param in model.named_parameters()
+        if param.requires_grad and ".lora_" not in name
+    ]
+
+    if not llrd_enabled:
+        return [{"params": [param for _, param in non_lora_named_params], "lr": base_lr}] if non_lora_named_params else []
+
+    vit_llrd_info = _get_vit_llrd_info(model_name)
+    if not vit_llrd_info["enabled"]:
+        return [{"params": [param for _, param in non_lora_named_params], "lr": base_lr}] if non_lora_named_params else []
+
+    decay = float(llrd_cfg.get("decay", 0.75))
+    max_layer_id = vit_llrd_info["num_layers"] - 1
+
+    grouped = {}
+    for name, param in non_lora_named_params:
+        layer_id = _get_vit_layer_id(name, model_name)
+        lr = base_lr * (decay ** (max_layer_id - layer_id))
+        if lr not in grouped:
+            grouped[lr] = []
+        grouped[lr].append(param)
+
+    return [{"params": params, "lr": lr} for lr, params in sorted(grouped.items(), key=lambda item: item[0])]
+
 def build_optimizer(model: nn.Module, config: dict):
     training_cfg = config.get('training', {})
     optimizer_cfg = config.get('optimizer', {})
@@ -31,11 +86,9 @@ def build_optimizer(model: nn.Module, config: dict):
     lora_lr = optimizer_cfg.get('lora_lr', base_lr)
     weight_decay = optimizer_cfg.get('weight_decay', 0.0)
 
-    non_lora_params, lora_params = split_trainable_parameters(model)
+    _, lora_params = split_trainable_parameters(model)
 
-    param_groups = []
-    if non_lora_params:
-        param_groups.append({'params': non_lora_params, 'lr': base_lr})
+    param_groups = _build_non_lora_param_groups(model, config, base_lr)
     if lora_params:
         param_groups.append({'params': lora_params, 'lr': lora_lr})
 
@@ -235,23 +288,25 @@ def update_optimizer(optimizer: optim.Optimizer, model: nn.Module, config: dict)
     optimizer_cfg = config.get('optimizer', {})
     base_lr = optimizer_cfg.get('lr', config.get('training', {}).get('learning_rate', 1e-3))
     lora_lr = optimizer_cfg.get('lora_lr', base_lr)
-    
-    new_non_lora = []
+
+    new_non_lora_groups = _build_non_lora_param_groups(model, config, base_lr)
+    new_non_lora_count = 0
+    for group in new_non_lora_groups:
+        new_params = [param for param in group["params"] if param not in existing_params]
+        if new_params:
+            optimizer.add_param_group({'params': new_params, 'lr': group['lr']})
+            new_non_lora_count += len(new_params)
+
     new_lora = []
-    
-    # Find any newly unwrapped params that are not managed by optimizer
+
+    # Find any newly unwrapped LoRA params that are not managed by optimizer
     for name, param in model.named_parameters():
-        if param.requires_grad and param not in existing_params:
-            if ".lora_" in name:
-                new_lora.append(param)
-            else:
-                new_non_lora.append(param)
-                
-    # Add them as a brand new parameter group
-    if new_non_lora:
-        optimizer.add_param_group({'params': new_non_lora, 'lr': base_lr})
-        print(f"Update: Dynamically added {len(new_non_lora)} un-frozen parameter tensors to the optimizer!")
-        
+        if param.requires_grad and param not in existing_params and ".lora_" in name:
+            new_lora.append(param)
+
+    if new_non_lora_count:
+        print(f"Update: Dynamically added {new_non_lora_count} un-frozen parameter tensors to the optimizer!")
+
     if new_lora:
         optimizer.add_param_group({'params': new_lora, 'lr': lora_lr})
         print(f"Update: Dynamically added {len(new_lora)} un-frozen LoRA tensors to the optimizer!")
