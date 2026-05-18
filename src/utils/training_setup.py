@@ -5,7 +5,7 @@ from torch.nn.modules.batchnorm import _BatchNorm
 
 
 def _chunk_blocks(blocks, chunk_size: int):
-    return [nn.Sequential(*blocks[i:i + chunk_size]) for i in range(0, len(blocks), chunk_size)]
+    return [blocks[i:i + chunk_size] for i in range(0, len(blocks), chunk_size)]
 
 
 def split_trainable_parameters(model: nn.Module):
@@ -242,11 +242,20 @@ def apply_finetuning_strategy(model: nn.Module, config: dict, current_epoch: int
             if hasattr(model, 'layer3'): blocks.append(model.layer3)
             if hasattr(model, 'layer2'): blocks.append(model.layer2)
             if hasattr(model, 'layer1'): blocks.append(model.layer1)
+            stem_layers = []
+            if hasattr(model, 'maxpool'): stem_layers.append(model.maxpool)
+            if hasattr(model, 'relu'): stem_layers.append(model.relu)
+            if hasattr(model, 'bn1'): stem_layers.append(model.bn1)
+            if hasattr(model, 'conv1'): stem_layers.append(model.conv1)
+            if stem_layers: blocks.append(stem_layers)
         elif model_type == 'vit':
             if hasattr(model, 'head'):
                 blocks.append(model.head)
             elif hasattr(model, 'heads'):
                 blocks.append(model.heads)
+
+            if hasattr(model, 'encoder') and hasattr(model.encoder, 'ln'):
+                blocks.append(model.encoder.ln)
 
             if hasattr(model, 'layers'):
                 for layer in reversed(model.layers):
@@ -263,6 +272,14 @@ def apply_finetuning_strategy(model: nn.Module, config: dict, current_epoch: int
                         blocks.append(layer)
             else:
                 blocks = list(model.children())[::-1]
+                
+            stem_modules = []
+            if hasattr(model, 'conv_proj'): stem_modules.append(model.conv_proj)
+            if hasattr(model, 'encoder') and hasattr(model.encoder, 'pos_embedding'): 
+                stem_modules.append(model.encoder.pos_embedding)
+            if hasattr(model, 'class_token'): 
+                stem_modules.append(model.class_token)
+            if stem_modules: blocks.append(stem_modules)
         else:
             blocks = list(model.children())[::-1]
             
@@ -278,13 +295,16 @@ def apply_finetuning_strategy(model: nn.Module, config: dict, current_epoch: int
 
         # Apply requires_grad to our chosen blocks
         for block in blocks[:blocks_to_unfreeze]:
-            for name, param in block.named_parameters():
-                # Leave LoRA components alone (handled independently)
-                if ".lora_" in name:
-                    continue
-                if not param.requires_grad:
-                    param.requires_grad = True
-                    anything_unfrozen = True
+            items = block if isinstance(block, list) else [block]
+            for item in items:
+                params = item.named_parameters() if isinstance(item, nn.Module) else [("param", item)] if isinstance(item, nn.Parameter) else []
+                for name, param in params:
+                    # Leave LoRA components alone (handled independently)
+                    if ".lora_" in name:
+                        continue
+                    if not param.requires_grad:
+                        param.requires_grad = True
+                        anything_unfrozen = True
 
     # LoRA grad. unfreezing
     lora_cfg = config.get('lora', {}) or {}
