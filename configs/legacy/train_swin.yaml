@@ -32,7 +32,8 @@ optimizer:
   lr: 0.0005
   weight_decay: 0.0
 scheduler:
-  name: "none"
+  name: "cosine_annealing_with_linear_warmup"
+  warmup_epochs: 3
 loss:
   name: "cross_entropy"
 early_stopping:

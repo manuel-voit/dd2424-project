@@ -135,6 +135,7 @@ def build_loss(config: dict, class_weights: torch.Tensor = None):
 def build_scheduler(optimizer, config: dict):
     scheduler_cfg = config.get('scheduler', {})
     scheduler_name = scheduler_cfg.get('name', 'none').lower()
+    total_epochs = config.get('training', {}).get('epochs', 1)
 
     if scheduler_name in ('none', ''):
         return None, False
@@ -149,8 +150,44 @@ def build_scheduler(optimizer, config: dict):
     elif scheduler_name == 'cosine_annealing_lr':
         scheduler = optim.lr_scheduler.CosineAnnealingLR(
             optimizer,
-            T_max=scheduler_cfg.get('t_max', config.get('training', {}).get('epochs', 1)),
+            T_max=scheduler_cfg.get('t_max', total_epochs),
             eta_min=scheduler_cfg.get('eta_min', 0.0),
+        )
+        return scheduler, False
+    elif scheduler_name == 'cosine_annealing_with_linear_warmup':
+        warmup_epochs = scheduler_cfg.get('warmup_epochs', 3)
+        warmup_start_factor = scheduler_cfg.get('warmup_start_factor', 1e-6)
+        eta_min = scheduler_cfg.get('eta_min', 0.0)
+
+        if warmup_epochs <= 0:
+            scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                optimizer,
+                T_max=scheduler_cfg.get('t_max', total_epochs),
+                eta_min=eta_min,
+            )
+            return scheduler, False
+
+        if warmup_epochs >= total_epochs:
+            raise ValueError(
+                "scheduler.warmup_epochs must be smaller than training.epochs "
+                "for cosine_annealing_with_linear_warmup."
+            )
+
+        warmup = optim.lr_scheduler.LinearLR(
+            optimizer,
+            start_factor=warmup_start_factor,
+            end_factor=1.0,
+            total_iters=warmup_epochs,
+        )
+        cosine = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=scheduler_cfg.get('t_max', total_epochs - warmup_epochs),
+            eta_min=eta_min,
+        )
+        scheduler = optim.lr_scheduler.SequentialLR(
+            optimizer,
+            schedulers=[warmup, cosine],
+            milestones=[warmup_epochs],
         )
         return scheduler, False
     elif scheduler_name == 'exponential_lr':

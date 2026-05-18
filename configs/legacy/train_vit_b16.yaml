@@ -34,7 +34,8 @@ optimizer:
     enabled: true
     decay: 0.75
 scheduler:
-  name: "none"
+  name: "cosine_annealing_with_linear_warmup"
+  warmup_epochs: 1
 loss:
   name: "cross_entropy"
 early_stopping:

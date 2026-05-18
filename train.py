@@ -185,6 +185,10 @@ def main():
             if scheduler is not None and hasattr(scheduler, 'base_lrs'):
                 new_lrs = [group['lr'] for group in optimizer.param_groups[len(scheduler.base_lrs):]]
                 scheduler.base_lrs.extend(new_lrs)
+                if hasattr(scheduler, '_schedulers'):
+                    for sub_scheduler in scheduler._schedulers:
+                        if hasattr(sub_scheduler, 'base_lrs'):
+                            sub_scheduler.base_lrs.extend(new_lrs)
         
         train_metrics = train_one_epoch(
             model,
