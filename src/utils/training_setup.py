@@ -3,6 +3,11 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.nn.modules.batchnorm import _BatchNorm
 
+
+def _chunk_blocks(blocks, chunk_size: int):
+    return [nn.Sequential(*blocks[i:i + chunk_size]) for i in range(0, len(blocks), chunk_size)]
+
+
 def split_trainable_parameters(model: nn.Module):
     lora_params = []
     non_lora_params = []
@@ -130,6 +135,7 @@ def build_early_stopping(config: dict, save_path: str):
 def apply_finetuning_strategy(model: nn.Module, config: dict, current_epoch: int = 0):
     ft_config = config.get('model', {}).get('fine_tuning', {})
     strategy = ft_config.get('strategy', 'none').lower()
+    model_name = config.get('model', {}).get('name', '').lower()
     
     anything_unfrozen = False
     
@@ -147,10 +153,24 @@ def apply_finetuning_strategy(model: nn.Module, config: dict, current_epoch: int
             if hasattr(model, 'layer2'): blocks.append(model.layer2)
             if hasattr(model, 'layer1'): blocks.append(model.layer1)
         elif model_type == 'vit':
-            if hasattr(model, 'head'): blocks.append(model.head)
+            if hasattr(model, 'head'):
+                blocks.append(model.head)
+            elif hasattr(model, 'heads'):
+                blocks.append(model.heads)
+
             if hasattr(model, 'layers'):
                 for layer in reversed(model.layers):
                     blocks.append(layer)
+            elif hasattr(model, 'encoder') and hasattr(model.encoder, 'layers'):
+                encoder_layers = list(model.encoder.layers.children())
+                if model_name == 'vit_b_16' and len(encoder_layers) == 12:
+                    # Treat ViT-B/16 as 4 stages of 3 transformer blocks each
+                    stage_blocks = _chunk_blocks(encoder_layers, 3)
+                    for stage in reversed(stage_blocks):
+                        blocks.append(stage)
+                else:
+                    for layer in reversed(encoder_layers):
+                        blocks.append(layer)
             else:
                 blocks = list(model.children())[::-1]
         else:
@@ -259,7 +279,7 @@ def set_batchnorm_mode(model: nn.Module):
 def get_trainable_parameter_breakdown(model: nn.Module, model_type: str):
     head_prefixes = {
         "resnet": ("fc.",),
-        "vit": ("head.",),
+        "vit": ("head.", "heads."),
     }.get(model_type, tuple())
 
     breakdown = {

@@ -7,7 +7,7 @@ from sklearn.utils.class_weight import compute_class_weight
 
 # Import custom modules
 from src.models.cnn_backbone import get_resnet
-from src.models.vit_backbone import get_swin
+from src.models.vit_backbone import get_vit
 from src.models.lora import inject_lora
 
 from src.data.data_loader import get_dataloaders
@@ -85,7 +85,7 @@ def main():
     if MODEL_TYPE == "resnet":
         model = get_resnet(num_classes=NUM_CLASSES, model_name=MODEL_NAME)
     elif MODEL_TYPE == "vit":
-        model = get_swin(num_classes=NUM_CLASSES, model_name=MODEL_NAME)
+        model = get_vit(num_classes=NUM_CLASSES, model_name=MODEL_NAME)
 
     # Inject LoRA if defined in the config
     if 'lora' in config and config['lora']:

@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from src.models.cnn_backbone import get_resnet
-from src.models.lora import LoRAConv2d, LoRALinear, inject_lora
+from src.models.lora import LoRAConv2d, LoRALinear, LoRAMultiheadAttention, inject_lora
 from src.models.vit_backbone import get_swin
 from src.utils.seed import set_seed
 
@@ -30,7 +30,7 @@ def build_model(model_config: dict):
 def collect_replaced_modules(model: nn.Module):
     replaced = {}
     for name, module in model.named_modules():
-        if isinstance(module, (LoRALinear, LoRAConv2d)):
+        if isinstance(module, (LoRALinear, LoRAConv2d, LoRAMultiheadAttention)):
             replaced[name] = type(module).__name__
     return replaced
 
@@ -51,10 +51,11 @@ def load_config(config_path: str):
 @pytest.mark.parametrize(
     "config_path",
     [
-        "configs/train_resnet_lora_general.yaml",
-        "configs/train_resnet_lora_targeted.yaml",
-        "configs/train_swin_lora_general.yaml",
-        "configs/train_swin_lora_targeted.yaml",
+        "configs/legacy/train_resnet_lora_general.yaml",
+        "configs/legacy/train_resnet_lora_targeted.yaml",
+        "configs/legacy/train_swin_lora_general.yaml",
+        "configs/legacy/train_swin_lora_targeted.yaml",
+        "configs/legacy/train_vit_b16_lora_general.yaml",
     ],
 )
 def test_lora_injection_and_update_behavior(config_path: str):

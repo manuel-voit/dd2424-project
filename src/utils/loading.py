@@ -1,7 +1,7 @@
 import torch
 
 from src.models.cnn_backbone import get_resnet
-from src.models.vit_backbone import get_swin
+from src.models.vit_backbone import get_vit
 from src.models.lora import inject_lora
 
 
@@ -13,7 +13,7 @@ def build_model_from_config(config: dict):
     if model_type == 'resnet':
         model = get_resnet(num_classes=num_classes, model_name=model_name or "resnet50")
     elif model_type == 'vit':
-        model = get_swin(num_classes=num_classes, model_name=model_name or "swin_t")
+        model = get_vit(num_classes=num_classes, model_name=model_name or "swin_t")
     else:
         raise ValueError(f"Unknown model type in checkpoint: {model_type}")
 
