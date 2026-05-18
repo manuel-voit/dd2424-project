@@ -1,0 +1,54 @@
+model:
+  type: vit
+  name: vit_b_16
+  num_classes: 37
+  fine_tuning:
+    strategy: simultaneous
+    num_layers: 1
+    unfreeze_every_n_epochs: 0
+training:
+  batch_size: 64
+  epochs: 10
+  learning_rate: 0.0001
+  seed: 42
+data:
+  name: oxford_pets
+  data_dir: ./data
+  image_size: 224
+  train_fraction: 1.0
+  augmentation: true
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+  imbalance:
+    enabled: false
+    imbalance_factor: 0.4
+    use_weighted_loss: false
+    oversample: false
+optimizer:
+  name: adamw
+  lr: 0.0001
+  weight_decay: 0.1
+  llrd:
+    enabled: true
+    decay: 0.7
+scheduler:
+  name: cosine_annealing_with_linear_warmup
+  warmup_epochs: 1
+loss:
+  name: cross_entropy
+early_stopping:
+  enabled: true
+  patience: 3
+  min_delta: 0.0
+logging:
+  enabled: true
+  run_name: exp17_vit_b_16_ft-simultaneous_nl1_lr0.000100_l2-0.1
+  experiment_name: Exp17_Simultaneous_Unfreezing_ViT
+  dagshub_repo_owner: manuel.voit
+  dagshub_repo_name: dd2424-project
+  log_metrics: true
+  log_confusion_matrix: true
+  log_artifact: true
+  measure_compute_time: false
