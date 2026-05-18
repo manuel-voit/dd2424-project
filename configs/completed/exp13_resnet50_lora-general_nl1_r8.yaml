@@ -1,6 +1,6 @@
 model:
   type: resnet
-  name: resnet101
+  name: resnet50
   num_classes: 37
   gradient_checkpointing: false
   gradient_checkpointing_granularity: stage
@@ -12,36 +12,7 @@ lora:
   r: 8
   alpha: 16
   targets:
-  - layer4.0.conv2
-  - layer4.1.conv2
-  - layer4.2.conv2
-  - layer3.0.conv2
-  - layer3.1.conv2
-  - layer3.2.conv2
-  - layer3.3.conv2
-  - layer3.4.conv2
-  - layer3.5.conv2
-  - layer3.6.conv2
-  - layer3.7.conv2
-  - layer3.8.conv2
-  - layer3.9.conv2
-  - layer3.10.conv2
-  - layer3.11.conv2
-  - layer3.12.conv2
-  - layer3.13.conv2
-  - layer3.14.conv2
-  - layer3.15.conv2
-  - layer3.16.conv2
-  - layer3.17.conv2
-  - layer3.18.conv2
-  - layer3.19.conv2
-  - layer3.20.conv2
-  - layer3.21.conv2
-  - layer3.22.conv2
-  - layer2.0.conv2
-  - layer2.1.conv2
-  - layer2.2.conv2
-  - layer2.3.conv2
+  - layer4
   gradual_unfreeze:
     enabled: false
     schedule: {}
@@ -81,7 +52,7 @@ early_stopping:
   min_delta: 0.0
 logging:
   enabled: true
-  run_name: exp13_resnet101_lora-targeted_nl3_r8
+  run_name: exp13_resnet50_lora-general_nl1_r8
   experiment_name: Exp13_LoRA_vs_FineTuning
   dagshub_repo_owner: manuel.voit
   dagshub_repo_name: dd2424-project

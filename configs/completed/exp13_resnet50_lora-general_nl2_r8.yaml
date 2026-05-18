@@ -2,6 +2,8 @@ model:
   type: resnet
   name: resnet50
   num_classes: 37
+  gradient_checkpointing: false
+  gradient_checkpointing_granularity: stage
   fine_tuning:
     strategy: none
     num_layers: 0
@@ -33,7 +35,7 @@ data:
   prefetch_factor: 4
   imbalance:
     enabled: false
-    imbalance_factor: 0.2
+    imbalance_factor: 0.4
     use_weighted_loss: false
     oversample: false
 optimizer:
