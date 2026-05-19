@@ -1,0 +1,71 @@
+model:
+  type: vit
+  name: vit_b_16
+  num_classes: 37
+  fine_tuning:
+    strategy: none
+    num_layers: 0
+    unfreeze_every_n_epochs: 0
+lora:
+  r: 8
+  alpha: 16
+  targets:
+  - encoder.layers.encoder_layer_0.self_attention
+  - encoder.layers.encoder_layer_1.self_attention
+  - encoder.layers.encoder_layer_2.self_attention
+  - encoder.layers.encoder_layer_3.self_attention
+  - encoder.layers.encoder_layer_4.self_attention
+  - encoder.layers.encoder_layer_5.self_attention
+  - encoder.layers.encoder_layer_6.self_attention
+  - encoder.layers.encoder_layer_7.self_attention
+  - encoder.layers.encoder_layer_8.self_attention
+  - encoder.layers.encoder_layer_9.self_attention
+  - encoder.layers.encoder_layer_10.self_attention
+  - encoder.layers.encoder_layer_11.self_attention
+  gradual_unfreeze:
+    enabled: false
+    schedule: {}
+  learning_rate: 0.0001
+training:
+  batch_size: 64
+  epochs: 10
+  learning_rate: 0.01
+  seed: 42
+data:
+  name: oxford_pets
+  data_dir: ./data
+  image_size: 224
+  train_fraction: 1.0
+  augmentation: true
+  num_workers: 4
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
+  imbalance:
+    enabled: false
+    imbalance_factor: 0.4
+    use_weighted_loss: false
+    oversample: false
+optimizer:
+  name: adamw
+  lr: 0.01
+  lora_lr: 0.0001
+  weight_decay: 0.01
+scheduler:
+  name: cosine_annealing_lr
+loss:
+  name: cross_entropy
+early_stopping:
+  enabled: true
+  patience: 3
+  min_delta: 0.0
+logging:
+  enabled: true
+  run_name: exp20_vit_b_16_lora_nl4_r8_lora-lr0.0001_head-lr0.01_l2-0.01
+  experiment_name: Exp20_LoRA_ViT
+  dagshub_repo_owner: manuel.voit
+  dagshub_repo_name: dd2424-project
+  log_metrics: true
+  log_confusion_matrix: true
+  log_artifact: true
+  measure_compute_time: false
