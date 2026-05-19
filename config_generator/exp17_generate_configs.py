@@ -5,7 +5,7 @@ import yaml
 
 
 MODELS = ["vit_b_16"]
-LEARNING_RATES = [1e-5, 3e-5, 1e-4, 3e-4]
+LEARNING_RATES = [1e-5, 3e-5, 1e-4, 3e-4, 1e-3]
 UNFREEZE_DEPTHS = [1, 2, 3, 4]
 WEIGHT_DECAYS = [0.01, 0.05, 0.1]
 
